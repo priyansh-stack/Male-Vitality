@@ -38,12 +38,6 @@ enum AlertSevirity{
   critical,
 }
 
-enum TrendPeriod{
-  sevenDays,
-  thirtyDays,
-  ninetyDays,
-  oneYear,
-}
 
 enum WeareableType{
   applehealth,
@@ -138,5 +132,46 @@ extension BloodpressureType on BloodPresureCategory{
         return Colors.red.shade900;
     }
   }
-
 }
+
+//enums for health score 
+
+  enum ScoreStatus {
+    excellent,
+    good,
+    fair,
+    poor,
+    critical,
+  }
+
+  extension ScoreStatusExtension on ScoreStatus{
+    String get displayname{
+      switch (this) {
+        case ScoreStatus.excellent:
+          return 'Excellent';
+        case ScoreStatus.good:
+          return 'Good';
+        case ScoreStatus.fair:
+          return 'Fair';
+        case ScoreStatus.poor:
+          return 'Poor';
+        case ScoreStatus.critical:
+          return 'Critical';
+      }
+    }
+
+    Color get color{
+      switch (this) {
+        case ScoreStatus.excellent:
+          return Colors.green.shade700;
+        case ScoreStatus.good:
+          return Colors.green.shade400;
+        case ScoreStatus.fair:
+          return Colors.orange;
+        case ScoreStatus.poor:
+          return Colors.red.shade400;
+        case ScoreStatus.critical:
+          return Colors.red.shade900;
+      }
+    }
+  }
