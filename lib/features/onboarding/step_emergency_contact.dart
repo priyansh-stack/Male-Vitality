@@ -1,18 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/bloc/onboarding/onboarding_bloc.dart';
 import '../../core/bloc/onboarding/onboarding_event.dart';
 import '../../core/models/emergency_contact.dart';
 
 class StepEmergencyContact extends StatefulWidget {
-  final VoidCallback onNext;
-  final VoidCallback onBack;
-
-  const StepEmergencyContact({
-    super.key,
-    required this.onNext,
-    required this.onBack,
-  });
+  const StepEmergencyContact({super.key});
 
   @override
   State<StepEmergencyContact> createState() => _StepEmergencyContactState();
@@ -20,9 +14,9 @@ class StepEmergencyContact extends StatefulWidget {
 
 class _StepEmergencyContactState extends State<StepEmergencyContact> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController(text: 'priyansh');
-  final _phoneCtrl = TextEditingController(text: '+90 9027707502');
-  final _emailCtrl = TextEditingController(text: 'priyanshu@earthonsky.com');
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   String _relationship = 'Spouse / Partner';
 
   final List<String> _relationships = [
@@ -51,13 +45,13 @@ class _StepEmergencyContactState extends State<StepEmergencyContact> {
         email: _emailCtrl.text.trim().isNotEmpty ? _emailCtrl.text.trim() : null,
       );
       context.read<OnboardingBloc>().add(SaveEmergencyContactEvent(contact));
-      widget.onNext();
+      context.go('/onboarding/permissions');
     }
   }
 
   void _skip() {
     context.read<OnboardingBloc>().add(const SaveEmergencyContactEvent(null));
-    widget.onNext();
+    context.go('/onboarding/permissions');
   }
 
   @override
@@ -148,12 +142,14 @@ class _StepEmergencyContactState extends State<StepEmergencyContact> {
             ),
             const SizedBox(height: 32),
 
-            // Action Buttons
+            //  Action Buttons
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: widget.onBack,
+                    onPressed: () {
+                      context.go('/onboarding/health-profile');
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

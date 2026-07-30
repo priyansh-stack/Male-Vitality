@@ -12,8 +12,8 @@ class HealthSyncService extends ChangeNotifier {
   DateTime? _appleHealthLastSync;
   DateTime? _googleFitLastSync;
 
-  List<String> _appleHealthTypes = ['Steps', 'Heart Rate', 'Sleep Analysis', 'Active Energy'];
-  List<String> _googleFitTypes = ['Steps', 'Heart Rate', 'Sleep Duration', 'Blood Oxygen'];
+  final List<String> _appleHealthTypes = ['Steps', 'Heart Rate', 'Sleep Analysis', 'Active Energy'];
+  final List<String> _googleFitTypes = ['Steps', 'Heart Rate', 'Sleep Duration', 'Blood Oxygen'];
 
   bool get isAppleHealthAuthorized => _appleHealthAuthorized;
   bool get isGoogleFitAuthorized => _googleFitAuthorized;

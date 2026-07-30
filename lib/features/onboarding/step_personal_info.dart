@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/bloc/onboarding/onboarding_bloc.dart';
 import '../../core/bloc/onboarding/onboarding_event.dart';
 
 class StepPersonalInfo extends StatefulWidget {
-  final VoidCallback onNext;
-
-  const StepPersonalInfo({super.key, required this.onNext});
+  const StepPersonalInfo({super.key});
 
   @override
   State<StepPersonalInfo> createState() => _StepPersonalInfoState();
@@ -17,7 +16,7 @@ class _StepPersonalInfoState extends State<StepPersonalInfo> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
 
-  final List<String> _genders = [ 'Male', 'Non-Binary', 'Prefer Not to Say'];
+  final List<String> _genders = ['Male', 'Non-Binary', 'Prefer Not to Say'];
 
   @override
   void initState() {
@@ -37,7 +36,7 @@ class _StepPersonalInfoState extends State<StepPersonalInfo> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: state.dateOfBirth,
-      firstDate: DateTime(1998),
+      firstDate: DateTime(1940),
       lastDate: DateTime.now(),
       builder: (context, child) {
         return Theme(
@@ -50,12 +49,12 @@ class _StepPersonalInfoState extends State<StepPersonalInfo> {
     );
     if (picked != null && mounted) {
       context.read<OnboardingBloc>().add(
-            UpdatePersonalInfoEvent(
-              name: _nameController.text,
-              dob: picked,
-              gender: state.gender,
-            ),
-          );
+        UpdatePersonalInfoEvent(
+          name: _nameController.text,
+          dob: picked,
+          gender: state.gender,
+        ),
+      );
     }
   }
 
@@ -82,7 +81,6 @@ class _StepPersonalInfoState extends State<StepPersonalInfo> {
             ),
             const SizedBox(height: 24),
 
-            // Name Field
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
@@ -91,18 +89,18 @@ class _StepPersonalInfoState extends State<StepPersonalInfo> {
               ),
               onChanged: (val) {
                 context.read<OnboardingBloc>().add(
-                      UpdatePersonalInfoEvent(
-                        name: val,
-                        dob: state.dateOfBirth,
-                        gender: state.gender,
-                      ),
-                    );
+                  UpdatePersonalInfoEvent(
+                    name: val,
+                    dob: state.dateOfBirth,
+                    gender: state.gender,
+                  ),
+                );
               },
               validator: (v) => v == null || v.isEmpty ? 'Please enter a display name' : null,
             ),
             const SizedBox(height: 20),
 
-            // Date of Birth Picker Button
+            // Date of Birth
             const Text('Date of Birth', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             InkWell(
@@ -131,7 +129,7 @@ class _StepPersonalInfoState extends State<StepPersonalInfo> {
             ),
             const SizedBox(height: 20),
 
-            // Live Calculated Life-Stage Card
+            // Life Stage Card
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -202,12 +200,12 @@ class _StepPersonalInfoState extends State<StepPersonalInfo> {
                   onSelected: (selected) {
                     if (selected) {
                       context.read<OnboardingBloc>().add(
-                            UpdatePersonalInfoEvent(
-                              name: _nameController.text,
-                              dob: state.dateOfBirth,
-                              gender: g,
-                            ),
-                          );
+                        UpdatePersonalInfoEvent(
+                          name: _nameController.text,
+                          dob: state.dateOfBirth,
+                          gender: g,
+                        ),
+                      );
                     }
                   },
                 );
@@ -222,7 +220,7 @@ class _StepPersonalInfoState extends State<StepPersonalInfo> {
               child: ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    widget.onNext();
+                    context.go('/onboarding/health-profile');
                   }
                 },
                 child: const Row(

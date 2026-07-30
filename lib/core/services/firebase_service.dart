@@ -24,7 +24,7 @@ class FirebaseService {
     } catch (e) {
       _isFirebaseInitialized = false;
       _initializationError = e.toString();
-      debugPrint('❌ Firebase initialization error: $e');
+      debugPrint(' Firebase initialization error: $e');
       rethrow;
     }
   }

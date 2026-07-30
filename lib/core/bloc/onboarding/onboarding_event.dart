@@ -87,3 +87,12 @@ class CompleteOnboardingEvent extends OnboardingEvent {
   @override
   List<Object?> get props => [uid, email];
 }
+
+//  NEW EVENT
+class LoadSavedProfile extends OnboardingEvent {
+  final String uid;
+  const LoadSavedProfile(this.uid);
+
+  @override
+  List<Object?> get props => [uid];
+}

@@ -1,20 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/bloc/onboarding/onboarding_bloc.dart';
 import '../../core/bloc/onboarding/onboarding_event.dart';
 import '../../core/bloc/onboarding/onboarding_state.dart';
 import '../../core/models/lifestyle_factors.dart';
 import '../../core/models/medication.dart';
+import '../../core/theme/app_theme.dart';
 
 class StepHealthProfile extends StatefulWidget {
-  final VoidCallback onNext;
-  final VoidCallback onBack;
-
-  const StepHealthProfile({
-    super.key,
-    required this.onNext,
-    required this.onBack,
-  });
+  const StepHealthProfile({super.key});
 
   @override
   State<StepHealthProfile> createState() => _StepHealthProfileState();
@@ -22,70 +17,43 @@ class StepHealthProfile extends StatefulWidget {
 
 class _StepHealthProfileState extends State<StepHealthProfile> {
   final List<String> _availableConditions = [
-    'None',
-    'Hypertension',
-    'Asthma',
-    'Diabetes Type 2',
-    'High Cholesterol',
-    'Thyroid Disorder',
-    'Migraine',
-    'Arthritis',
+    'None', 'Hypertension', 'Asthma', 'Diabetes Type 2', 
+    'High Cholesterol', 'Thyroid Disorder', 'Migraine', 'Arthritis',
   ];
 
+  // (Keep _showAddMedicationDialog identical logic, just update styling internally if desired)
   void _showAddMedicationDialog(BuildContext context) {
     final nameCtrl = TextEditingController();
     final dosageCtrl = TextEditingController();
     final freqCtrl = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Add Current Medication'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Medication Name (e.g., Lisinopril)'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: dosageCtrl,
-                decoration: const InputDecoration(labelText: 'Dosage (e.g., 10mg)'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: freqCtrl,
-                decoration: const InputDecoration(labelText: 'Frequency (e.g., Once daily)'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (nameCtrl.text.isNotEmpty) {
-                  context.read<OnboardingBloc>().add(
-                        AddMedicationEvent(
-                          Medication(
-                            name: nameCtrl.text.trim(),
-                            dosage: dosageCtrl.text.trim(),
-                            frequency: freqCtrl.text.trim(),
-                          ),
-                        ),
-                      );
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Add'),
-            ),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceWhite,
+        title: const Text('Add Medication', style: TextStyle(fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name (e.g., Lisinopril)')),
+            const SizedBox(height: 12),
+            TextField(controller: dosageCtrl, decoration: const InputDecoration(labelText: 'Dosage (e.g., 10mg)')),
+            const SizedBox(height: 12),
+            TextField(controller: freqCtrl, decoration: const InputDecoration(labelText: 'Frequency')),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (nameCtrl.text.isNotEmpty) {
+                context.read<OnboardingBloc>().add(AddMedicationEvent(Medication(name: nameCtrl.text.trim(), dosage: dosageCtrl.text.trim(), frequency: freqCtrl.text.trim())));
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -100,20 +68,13 @@ class _StepHealthProfileState extends State<StepHealthProfile> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Health & Lifestyle Profile',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-              ),
+              const Text('Health & Lifestyle', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppTheme.textDark)),
               const SizedBox(height: 8),
-              const Text(
-                'Share any existing conditions, active medications, and general lifestyle habits.',
-                style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 24),
+              const Text('Help us tailor your vitality insights by sharing your current habits and baseline.', style: TextStyle(fontSize: 15, color: AppTheme.textMedium, height: 1.4)),
+              const SizedBox(height: 32),
 
-              // Health Conditions
-              const Text('Pre-existing Health Conditions', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
+              const Text('Pre-existing Conditions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -122,29 +83,32 @@ class _StepHealthProfileState extends State<StepHealthProfile> {
                   return FilterChip(
                     label: Text(cond),
                     selected: isSelected,
-                    selectedColor: const Color(0xFF4F46E5).withOpacity(0.2),
-                    checkmarkColor: const Color(0xFF4F46E5),
-                    labelStyle: TextStyle(
-                      color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF334155),
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    showCheckmark: false,
+                    backgroundColor: AppTheme.surfaceWhite,
+                    selectedColor: AppTheme.primaryTeal,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(color: isSelected ? AppTheme.primaryTeal : AppTheme.borderLight),
                     ),
-                    onSelected: (_) {
-                      context.read<OnboardingBloc>().add(ToggleHealthConditionEvent(cond));
-                    },
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.white : AppTheme.textMedium,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                    onSelected: (_) => context.read<OnboardingBloc>().add(ToggleHealthConditionEvent(cond)),
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
-              // Active Medications
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Active Medications', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Active Medications', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   TextButton.icon(
                     onPressed: () => _showAddMedicationDialog(context),
-                    icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                    label: const Text('Add Medication'),
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text('Add'),
+                    style: TextButton.styleFrom(foregroundColor: AppTheme.primaryTeal),
                   ),
                 ],
               ),
@@ -152,104 +116,93 @@ class _StepHealthProfileState extends State<StepHealthProfile> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
+                    color: AppTheme.surfaceSubtle,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline, color: Color(0xFF64748B), size: 20),
+                      Icon(Icons.info_outline, color: AppTheme.textMuted, size: 20),
                       SizedBox(width: 12),
-                      Text('No medications added yet.', style: TextStyle(color: Color(0xFF64748B))),
+                      Text('No medications tracking active.', style: TextStyle(color: AppTheme.textMedium)),
                     ],
                   ),
                 )
               else
                 Column(
                   children: state.medications.asMap().entries.map((entry) {
-                    final idx = entry.key;
                     final med = entry.value;
-                    return Card(
+                    return Container(
                       margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.borderLight),
+                        borderRadius: BorderRadius.circular(16),
+                        color: AppTheme.surfaceWhite,
+                      ),
                       child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Color(0xFFEEF2FF),
-                          child: Icon(Icons.medication_rounded, color: Color(0xFF4F46E5)),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: AppTheme.accentEmerald.withOpacity(0.1), shape: BoxShape.circle),
+                          child: const Icon(Icons.medication, color: AppTheme.accentEmerald, size: 20),
                         ),
-                        title: Text(med.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('${med.dosage} • ${med.frequency}'),
+                        title: Text(med.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                        subtitle: Text('${med.dosage} • ${med.frequency}', style: const TextStyle(color: AppTheme.textMedium)),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                          onPressed: () {
-                            context.read<OnboardingBloc>().add(RemoveMedicationEvent(idx));
-                          },
+                          icon: const Icon(Icons.delete_outline, color: AppTheme.dangerRed),
+                          onPressed: () => context.read<OnboardingBloc>().add(RemoveMedicationEvent(entry.key)),
                         ),
                       ),
                     );
                   }).toList(),
                 ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 32),
 
-              // Lifestyle Factors
-              const Text('Lifestyle Factors', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('Lifestyle Factors', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-
-              // Stress Level Slider
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Perceived Stress Level (1 - 10)', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _getStressColor(lifestyle.stressLevel).withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${lifestyle.stressLevel}/10 (${_getStressLabel(lifestyle.stressLevel)})',
-                              style: TextStyle(
-                                color: _getStressColor(lifestyle.stressLevel),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
+              
+              // Stress Slider Container
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppTheme.borderLight),
+                  borderRadius: BorderRadius.circular(16),
+                  color: AppTheme.surfaceWhite,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Stress Level (1-10)', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textDark)),
+                        Text('${lifestyle.stressLevel}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppTheme.primaryTeal)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SliderTheme(
+                      data: SliderThemeData(
+                        activeTrackColor: AppTheme.primaryTeal,
+                        inactiveTrackColor: AppTheme.surfaceSubtle,
+                        thumbColor: AppTheme.primaryTeal,
+                        overlayColor: AppTheme.primaryTeal.withOpacity(0.2),
                       ),
-                      Slider(
+                      child: Slider(
                         value: lifestyle.stressLevel.toDouble(),
                         min: 1,
                         max: 10,
                         divisions: 9,
-                        activeColor: const Color(0xFF4F46E5),
                         onChanged: (val) {
-                          context.read<OnboardingBloc>().add(
-                                UpdateLifestyleFactorsEvent(
-                                  LifestyleFactors(
-                                    smoking: lifestyle.smoking,
-                                    alcohol: lifestyle.alcohol,
-                                    exercise: lifestyle.exercise,
-                                    sleep: lifestyle.sleep,
-                                    diet: lifestyle.diet,
-                                    stressLevel: val.round(),
-                                  ),
-                                ),
-                              );
+                          context.read<OnboardingBloc>().add(UpdateLifestyleFactorsEvent(
+                            LifestyleFactors(smoking: lifestyle.smoking, alcohol: lifestyle.alcohol, exercise: lifestyle.exercise, sleep: lifestyle.sleep, diet: lifestyle.diet, stressLevel: val.round())
+                          ));
                         },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-
-              // Exercise Level Dropdown
-              _buildDropdownTile<ExerciseLevel>(
+              const SizedBox(height: 16),
+              
+              _buildDropdownContainer<ExerciseLevel>(
                 label: 'Exercise Frequency',
                 icon: Icons.directions_run_rounded,
                 value: lifestyle.exercise,
@@ -257,25 +210,15 @@ class _StepHealthProfileState extends State<StepHealthProfile> {
                 itemLabel: (e) => e.label,
                 onChanged: (val) {
                   if (val != null) {
-                    context.read<OnboardingBloc>().add(
-                          UpdateLifestyleFactorsEvent(
-                            LifestyleFactors(
-                              smoking: lifestyle.smoking,
-                              alcohol: lifestyle.alcohol,
-                              exercise: val,
-                              sleep: lifestyle.sleep,
-                              diet: lifestyle.diet,
-                              stressLevel: lifestyle.stressLevel,
-                            ),
-                          ),
-                        );
+                    context.read<OnboardingBloc>().add(UpdateLifestyleFactorsEvent(
+                      LifestyleFactors(smoking: lifestyle.smoking, alcohol: lifestyle.alcohol, exercise: val, sleep: lifestyle.sleep, diet: lifestyle.diet, stressLevel: lifestyle.stressLevel)
+                    ));
                   }
                 },
               ),
-              const SizedBox(height: 12),
-
-              // Sleep Quality Dropdown
-              _buildDropdownTile<SleepQuality>(
+              const SizedBox(height: 16),
+              
+              _buildDropdownContainer<SleepQuality>(
                 label: 'Sleep Quality',
                 icon: Icons.bedtime_rounded,
                 value: lifestyle.sleep,
@@ -283,45 +226,27 @@ class _StepHealthProfileState extends State<StepHealthProfile> {
                 itemLabel: (s) => s.label,
                 onChanged: (val) {
                   if (val != null) {
-                    context.read<OnboardingBloc>().add(
-                          UpdateLifestyleFactorsEvent(
-                            LifestyleFactors(
-                              smoking: lifestyle.smoking,
-                              alcohol: lifestyle.alcohol,
-                              exercise: lifestyle.exercise,
-                              sleep: val,
-                              diet: lifestyle.diet,
-                              stressLevel: lifestyle.stressLevel,
-                            ),
-                          ),
-                        );
+                    context.read<OnboardingBloc>().add(UpdateLifestyleFactorsEvent(
+                      LifestyleFactors(smoking: lifestyle.smoking, alcohol: lifestyle.alcohol, exercise: lifestyle.exercise, sleep: val, diet: lifestyle.diet, stressLevel: lifestyle.stressLevel)
+                    ));
                   }
                 },
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 40),
 
-              // Navigation Buttons
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: widget.onBack,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
+                      onPressed: () => context.go('/onboarding/personal-info'),
                       child: const Text('Back'),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: widget.onNext,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: const Text('Next: Emergency'),
+                      onPressed: () => context.go('/onboarding/emergency-contact'),
+                      child: const Text('Next Step'),
                     ),
                   ),
                 ],
@@ -333,7 +258,7 @@ class _StepHealthProfileState extends State<StepHealthProfile> {
     );
   }
 
-  Widget _buildDropdownTile<T>({
+  Widget _buildDropdownContainer<T>({
     required String label,
     required IconData icon,
     required T value,
@@ -341,48 +266,36 @@ class _StepHealthProfileState extends State<StepHealthProfile> {
     required String Function(T) itemLabel,
     required ValueChanged<T?> onChanged,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Icon(icon, color: const Color(0xFF0D9488)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                  DropdownButton<T>(
-                    value: value,
-                    isExpanded: true,
-                    underline: const SizedBox(),
-                    items: items.map((item) {
-                      return DropdownMenuItem<T>(
-                        value: item,
-                        child: Text(itemLabel(item), style: const TextStyle(fontWeight: FontWeight.w600)),
-                      );
-                    }).toList(),
-                    onChanged: onChanged,
-                  ),
-                ],
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceWhite,
+        border: Border.all(color: AppTheme.borderLight),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppTheme.primaryTeal, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                DropdownButton<T>(
+                  value: value,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.textMuted),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textDark),
+                  items: items.map((item) => DropdownMenuItem<T>(value: item, child: Text(itemLabel(item)))).toList(),
+                  onChanged: onChanged,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
-  }
-
-  Color _getStressColor(int level) {
-    if (level <= 3) return Colors.green;
-    if (level <= 7) return Colors.amber.shade700;
-    return Colors.redAccent;
-  }
-
-  String _getStressLabel(int level) {
-    if (level <= 3) return 'Low Stress';
-    if (level <= 7) return 'Moderate';
-    return 'High Stress';
   }
 }

@@ -1,13 +1,13 @@
 import 'package:equatable/equatable.dart';
-import 'package:life_stage_health_app/core/models/health_enums.dart';
+import 'health_enums.dart';
 
 class HealthScore extends Equatable {
   final int score;
   final DateTime calculatedAt;
-  final Map<HealthCategory,int> categoryScores;
+  final Map<HealthCategory, int> categoryScores;
   final List<String> recommendations;
   final String? userId;
-  final Map<HealthCategory,String> categoryDescriptions;
+  final Map<HealthCategory, String> categoryDescriptions;
 
   const HealthScore({
     required this.score,
@@ -17,35 +17,33 @@ class HealthScore extends Equatable {
     this.userId,
     this.categoryDescriptions = const {},
   });
-    // category scores with validation
-  int getCategoryScore(HealthCategory category){
+
+  int getCategoryScore(HealthCategory category) {
     return categoryScores[category] ?? 0;
   }
 
-  bool get isHealthy => score >70;
+  bool get isHealthy => score > 70;
 
   ScoreStatus get status {
-    if(score >= 80) return ScoreStatus.excellent;
-    if(score >=70) return ScoreStatus.good;
-    if(score >= 50) return ScoreStatus.fair;
-    if(score >= 30) return ScoreStatus.poor;
-
+    if (score >= 80) return ScoreStatus.excellent;
+    if (score >= 70) return ScoreStatus.good;
+    if (score >= 50) return ScoreStatus.fair;
+    if (score >= 30) return ScoreStatus.poor;
     return ScoreStatus.critical;
   }
 
-  Map<String,dynamic> toMap(){
+  Map<String, dynamic> toMap() {
     return {
-      'score':score,
+      'score': score,
       'calculatedAt': calculatedAt.toIso8601String(),
       'categoryScores': categoryScores.map(
-        (key,value) => MapEntry(key.toString(), value)
+        (key, value) => MapEntry(key.toString(), value),
       ),
       'recommendations': recommendations,
-      'userId':userId,
+      'userId': userId,
     };
   }
 
-// factory method for retriving data
   factory HealthScore.fromJson(Map<String, dynamic> json) {
     final categoryScores = (json['categoryScores'] as Map<String, dynamic>).map(
       (key, value) => MapEntry(
@@ -62,9 +60,6 @@ class HealthScore extends Equatable {
     );
   }
 
-  
-  
   @override
   List<Object?> get props => [score, calculatedAt, categoryScores, recommendations];
-
 }

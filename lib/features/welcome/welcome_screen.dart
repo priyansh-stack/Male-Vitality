@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/models/life_stage.dart';
+import '../../core/theme/app_theme.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  final VoidCallback onGetStarted;
-
-  const WelcomeScreen({super.key, required this.onGetStarted});
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF4F46E5), Color(0xFF312E81), Color(0xFF0F172A)],
+            colors: [
+              AppTheme.primarySlate,
+              const Color(0xFF1E293B), // Lighter slate
+              AppTheme.primaryTeal.withOpacity(0.8),
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -31,7 +35,7 @@ class WelcomeScreen extends StatelessWidget {
                       color: Colors.white.withOpacity(0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.favorite_rounded, color: Colors.tealAccent, size: 28),
+                    child: const Icon(Icons.favorite_rounded, color: AppTheme.accentEmerald, size: 28),
                   ),
                   const SizedBox(width: 12),
                   const Text(
@@ -47,7 +51,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 30),
 
-              // Life Stage Badges Carousel/Pills Preview
+              // Life Stage Badges
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -85,7 +89,6 @@ class WelcomeScreen extends StatelessWidget {
                         }).toList(),
                       ),
                       const SizedBox(height: 36),
-
                       const Text(
                         'Personalized Care for Every Age & Stage',
                         textAlign: TextAlign.center,
@@ -107,8 +110,7 @@ class WelcomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 30),
-
-                      // Feature Cards Grid
+                      // Feature Cards
                       Row(
                         children: [
                           _buildFeatureItem(Icons.security_rounded, 'Firebase Auth & Sync'),
@@ -130,18 +132,22 @@ class WelcomeScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 58,
                   child: ElevatedButton(
-                    onPressed: onGetStarted,
+                    onPressed: () {
+                      context.go('/auth');
+                    },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.tealAccent.shade400,
-                      foregroundColor: const Color(0xFF0F172A),
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      backgroundColor: AppTheme.accentEmerald,
+                      foregroundColor: AppTheme.primarySlate,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Begin Onboarding',
+                          'Get Started',
                           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                         ),
                         SizedBox(width: 8),
@@ -169,7 +175,7 @@ class WelcomeScreen extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(icon, color: Colors.tealAccent, size: 22),
+            Icon(icon, color: AppTheme.accentCyan, size: 22),
             const SizedBox(height: 6),
             Text(
               label,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/bloc/auth/auth_bloc.dart';
 import '../../core/bloc/auth/auth_state.dart';
@@ -10,16 +11,19 @@ import '../../core/bloc/onboarding/onboarding_bloc.dart';
 import '../../core/bloc/onboarding/onboarding_event.dart';
 import '../../core/bloc/onboarding/onboarding_state.dart';
 
-class StepPermissions extends StatelessWidget {
-  final VoidCallback onBack;
+class StepPermissions extends StatefulWidget {
+  const StepPermissions({super.key});
 
-  const StepPermissions({super.key, required this.onBack});
+  @override
+  State<StepPermissions> createState() => _StepPermissionsState();
+}
 
+class _StepPermissionsState extends State<StepPermissions> {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    final String uid = authState is Authenticated ? authState.user.uid : 'demo_uid';
-    final String email = authState is Authenticated ? authState.user.email : 'demo@example.com';
+    final String uid = authState is Authenticated ? authState.user.uid : '';
+    final String email = authState is Authenticated ? authState.user.email : '';
 
     return BlocBuilder<HealthSyncBloc, HealthSyncState>(
       builder: (context, healthState) {
@@ -50,8 +54,11 @@ class StepPermissions extends StatelessWidget {
                     color: Colors.black,
                     isConnected: healthState.isAppleHealthAuthorized,
                     lastSync: healthState.appleHealthLastSync,
+                    isLoading: healthState.isLoading,
                     onToggle: () {
-                      context.read<HealthSyncBloc>().add(RequestAppleHealthEvent(uid));
+                      if (uid.isNotEmpty) {
+                        context.read<HealthSyncBloc>().add(RequestAppleHealthEvent(uid));
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
@@ -65,8 +72,11 @@ class StepPermissions extends StatelessWidget {
                     color: const Color(0xFF4285F4),
                     isConnected: healthState.isGoogleFitAuthorized,
                     lastSync: healthState.googleFitLastSync,
+                    isLoading: healthState.isLoading,
                     onToggle: () {
-                      context.read<HealthSyncBloc>().add(RequestGoogleFitEvent(uid));
+                      if (uid.isNotEmpty) {
+                        context.read<HealthSyncBloc>().add(RequestGoogleFitEvent(uid));
+                      }
                     },
                   ),
                   const SizedBox(height: 24),
@@ -91,12 +101,14 @@ class StepPermissions extends StatelessWidget {
                   ),
                   const SizedBox(height: 36),
 
-                  // Navigation Buttons
+                  //  Navigation Buttons
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: onBack,
+                          onPressed: () {
+                            context.go('/onboarding/emergency-contact');
+                          },
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -107,12 +119,14 @@ class StepPermissions extends StatelessWidget {
                       const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: onboardingState.isSubmitting
+                          onPressed: onboardingState.isSubmitting || uid.isEmpty
                               ? null
                               : () {
                                   context.read<OnboardingBloc>().add(
-                                        CompleteOnboardingEvent(uid: uid, email: email),
-                                      );
+                                    CompleteOnboardingEvent(uid: uid, email: email),
+                                  );
+                                  //  Go to Life Stage Welcome
+                                  context.go('/onboarding/welcome');
                                 },
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -146,6 +160,7 @@ class StepPermissions extends StatelessWidget {
     required Color color,
     required bool isConnected,
     required DateTime? lastSync,
+    required bool isLoading,
     required VoidCallback onToggle,
   }) {
     return Card(
@@ -169,11 +184,18 @@ class StepPermissions extends StatelessWidget {
                     ],
                   ),
                 ),
-                Switch(
-                  value: isConnected,
-                  activeColor: const Color(0xFF0D9488),
-                  onChanged: (_) => onToggle(),
-                ),
+                if (isLoading)
+                  const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  Switch(
+                    value: isConnected,
+                    activeColor: const Color(0xFF0D9488),
+                    onChanged: (_) => onToggle(),
+                  ),
               ],
             ),
             if (isConnected && lastSync != null) ...[

@@ -18,6 +18,7 @@ class OnboardingState extends Equatable {
   final UserProfile? completedProfile;
   final String? errorMessage;
 
+  bool get isOnboardingComplete => completedProfile != null;
   LifeStage get detectedLifeStage => LifeStage.calculateFromDOB(dateOfBirth);
 
   OnboardingState({

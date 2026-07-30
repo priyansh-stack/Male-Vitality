@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:life_stage_health_app/core/models/bloodpressure.dart';
-import 'package:life_stage_health_app/core/models/health_enums.dart';
+import 'bloodpressure.dart';
+import 'health_enums.dart';
 
 class HealthMetric extends Equatable {
   final String id;
@@ -10,7 +10,7 @@ class HealthMetric extends Equatable {
   final String unit;
   final DateTime timeStamp;
   final MetricSource source;
-  final Map<String,dynamic> metaData;
+  final Map<String, dynamic> metaData;
   final bool isAbnormal;
   final String? note;
 
@@ -27,7 +27,6 @@ class HealthMetric extends Equatable {
     this.note,
   });
 
-  // Factory for blood pressure
   factory HealthMetric.bloodPressure({
     required String userId,
     required int systolic,
@@ -61,7 +60,6 @@ class HealthMetric extends Equatable {
     );
   }
 
-  // Factory for weight
   factory HealthMetric.weight({
     required String userId,
     required double weight,
@@ -82,51 +80,114 @@ class HealthMetric extends Equatable {
     );
   }
 
-
-  // Map method for firebase
-
-  Map<String,dynamic> toMap(){
-    return {
-      'id':id,
-      'userId':userId,
-      'type':type,
-      'value':value,
-      'unit':unit,
-      'timestamp':timeStamp.toIso8601String(),
-      'source':source.toString(),
-      'metadata':metaData,
-      'isAbnormal':isAbnormal,
-      'note':note,
-    };
-
+  factory HealthMetric.glucose({
+    required String userId,
+    required double glucose,
+    required DateTime timestamp,
+    MetricSource source = MetricSource.manual,
+    String? note,
+  }) {
+    return HealthMetric(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      type: MetricType.glucose,
+      value: glucose,
+      unit: 'mg/dL',
+      timeStamp: timestamp,
+      source: source,
+      note: note,
+      isAbnormal: glucose < 70 || glucose > 140,
+      metaData: {'glucose': glucose},
+    );
   }
 
-  // factory method for retriving data from firebase
-  factory HealthMetric.fromMap(Map<String,dynamic> map){
+  factory HealthMetric.heartRate({
+    required String userId,
+    required int heartRate,
+    required DateTime timestamp,
+    MetricSource source = MetricSource.manual,
+    String? note,
+  }) {
+    return HealthMetric(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      type: MetricType.heartRate,
+      value: heartRate,
+      unit: 'bpm',
+      timeStamp: timestamp,
+      source: source,
+      note: note,
+      isAbnormal: heartRate < 40 || heartRate > 120,
+      metaData: {'heartRate': heartRate},
+    );
+  }
+
+  factory HealthMetric.steps({
+    required String userId,
+    required int steps,
+    required DateTime timestamp,
+    MetricSource source = MetricSource.weareable,
+  }) {
+    return HealthMetric(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      type: MetricType.steps,
+      value: steps,
+      unit: 'steps',
+      timeStamp: timestamp,
+      source: source,
+      metaData: {'steps': steps},
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'userId': userId,
+      'type': type.toString(),
+      'value': value is Bloodpressure ? (value as Bloodpressure).toMap() : value,
+      'unit': unit,
+      'timestamp': timeStamp.toIso8601String(),
+      'source': source.toString(),
+      'metadata': metaData,
+      'isAbnormal': isAbnormal,
+      'note': note,
+    };
+  }
+
+  factory HealthMetric.fromMap(Map<String, dynamic> map) {
     final type = MetricType.values.firstWhere(
       (e) => e.toString() == map['type'],
     );
     dynamic value = map['value'];
 
-    if(type == MetricType.bloodPressure){
+    if (type == MetricType.bloodPressure) {
       value = Bloodpressure.fromMap(map['value']);
     }
 
-    return HealthMetric(id: map['id'],
-       userId: map['userId'], type: type, value:value, unit: map['unit'],
-       timeStamp: DateTime.parse(map['timestamp']),
-       source: MetricSource.values.firstWhere(
+    return HealthMetric(
+      id: map['id'],
+      userId: map['userId'],
+      type: type,
+      value: value,
+      unit: map['unit'],
+      timeStamp: DateTime.parse(map['timestamp']),
+      source: MetricSource.values.firstWhere(
         (e) => e.toString() == map['source'],
-       ),
-       metaData: map['metaData'] ?? {},
-       isAbnormal: map['isAbnormal']?? false,
-       note: map['note'],
-      );
+      ),
+      metaData: map['metadata'] ?? {},
+      isAbnormal: map['isAbnormal'] ?? false,
+      note: map['note'],
+    );
   }
 
-  
+  String get displayValue {
+    if (type == MetricType.bloodPressure && value is Bloodpressure) {
+      return (value as Bloodpressure).formatted;
+    }
+    return value.toString();
+  }
 
   @override
-  List<Object?> get props => [id,userId,type,value,timeStamp,source];
-
+  List<Object?> get props => [id, userId, type, value, timeStamp, source];
 }

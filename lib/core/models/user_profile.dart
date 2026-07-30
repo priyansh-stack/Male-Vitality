@@ -17,6 +17,8 @@ class UserProfile {
   final bool onboardingCompleted;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final Map<String, dynamic>? metadata;
+
 
   UserProfile({
     required this.uid,
@@ -32,6 +34,7 @@ class UserProfile {
     this.onboardingCompleted = false,
     required this.createdAt,
     required this.updatedAt,
+    this.metadata,
   });
 
   LifeStage get lifeStage => LifeStage.calculateFromDOB(dateOfBirth);
@@ -51,6 +54,7 @@ class UserProfile {
       'onboardingCompleted': onboardingCompleted,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'metadata': metadata ?? {},
     };
   }
 
@@ -76,6 +80,7 @@ class UserProfile {
       onboardingCompleted: map['onboardingCompleted'] ?? false,
       createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(map['updatedAt'] ?? '') ?? DateTime.now(),
+      metadata: map['metadata'] ?? {},
     );
   }
 
