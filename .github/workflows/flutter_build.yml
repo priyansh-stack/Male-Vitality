@@ -2,10 +2,10 @@ name: Male Vitality APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, develop ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -23,7 +23,6 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          
           channel: 'stable'
           cache: true
       
@@ -37,35 +36,40 @@ jobs:
       - name: Run tests
         run: flutter test
       
-      - name: Decode Google Services (Android)
+      - name: Decode Google Services
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
-            echo "✅ Google Services configured successfully"
+            echo " Google Services configured"
           else
-            echo "⚠️ GOOGLE_SERVICES_JSON secret not found"
-            echo "Creating placeholder to continue build..."
             echo '{"project_info":{},"client":[]}' > android/app/google-services.json
           fi
       
-      - name: Build APK (Release)
-        run: flutter build apk --release
+      - name: Update minSdkVersion for health plugin
+        run: |
+          # Update minSdk from 24 to 26
+          sed -i 's/minSdkVersion 24/minSdkVersion 26/g' android/app/build.gradle
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 26/g' android/app/build.gradle.kts || true
+          echo " Updated minSdkVersion to 26"
       
-      - name: Build APK (Debug)
+      - name: Build Debug APK
         run: flutter build apk --debug
       
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release.apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
+      - name: Build Release APK
+        run: flutter build apk --release
       
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug.apk
+          name: Male-Vitality-Debug.apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+      
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Male-Vitality-Release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
