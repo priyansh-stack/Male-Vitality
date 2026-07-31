@@ -264,6 +264,6 @@ class AuthService extends ChangeNotifier {
   _currentUser = null;
   _isLoading = false;
   notifyListeners();
-  debugPrint('✅ Local auth state cleared');
+  debugPrint(' Local auth state cleared');
 }
 }

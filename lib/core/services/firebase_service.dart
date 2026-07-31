@@ -33,12 +33,13 @@ class FirebaseService {
     debugPrint(' Initializing Firebase for Web...');
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: 'AIzaSyC-LXGocdO_PHkQYEWanwtRfBVyp02Z-a4',
-        appId: '1:691595668326:web:a07772f7314876ced636a7',
-        messagingSenderId: '691595668326',
-        projectId: 'priyanshu-f7933',
-        storageBucket: 'priyanshu-f7933.firebasestorage.app',
-        authDomain: 'priyanshu-f7933.firebaseapp.com',
+        apiKey: "AIzaSyB4HysGplsObvgAGJrbKDvMPWNTZIXxFlQ",
+        authDomain: "male-vitality-cdbb6.firebaseapp.com",
+        projectId: "male-vitality-cdbb6",
+        storageBucket: "male-vitality-cdbb6.firebasestorage.app",
+        messagingSenderId: "548186846068",
+        appId: "1:548186846068:web:1c6e75fabb1e11fda93221",
+        measurementId: "G-E7KV00PCGC"
       ),
     );
   }
