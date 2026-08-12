@@ -42,16 +42,16 @@ jobs:
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
-            echo "✅ Google Services configured"
+            echo "Google Services configured"
           else
             echo '{"project_info":{},"client":[]}' > android/app/google-services.json
           fi
       
       - name: Fix minSdkVersion for health plugin
         run: |
-          echo "📁 Updating minSdkVersion in build.gradle.kts..."
+          echo "Updating minSdkVersion in build.gradle.kts..."
           if [ -f "android/app/build.gradle.kts" ]; then
-            echo "✅ Found build.gradle.kts"
+            echo "Found build.gradle.kts"
             echo "Current minSdk:"
             grep -i "minSdk" android/app/build.gradle.kts || echo "Not found"
             
@@ -60,9 +60,9 @@ jobs:
             
             echo "Updated minSdk:"
             grep -i "minSdk" android/app/build.gradle.kts || echo "Not found"
-            echo "✅ Successfully updated minSdkVersion to 26"
+            echo "Successfully updated minSdkVersion to 26"
           else
-            echo "❌ build.gradle.kts not found!"
+            echo "build.gradle.kts not found!"
             ls -la android/app/
             exit 1
           fi
