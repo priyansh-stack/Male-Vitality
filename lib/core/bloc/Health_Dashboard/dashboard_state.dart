@@ -12,12 +12,13 @@ class DashboardLoaded extends DashboardState {
   final List<HealthMetric> recentMetrics;
   final Map<MetricType, List<HealthMetric>> metricsTrend;
   final TodayFocus todayFocus;
-  final List<AbnormalMetrices> abnormalMetrics; 
+  final List<AbnormalMetrices> abnormalMetrics;
   final List<HealthMetric> allMetrics;
   final bool isSyncing;
   final DateTime? lastSyncTime;
   final Set<MetricType> visibleMetrics;
-  final TrendDepressed trendDepressed; 
+  final TrendDepressed trendDepressed;
+  final Map<String, dynamic> moodTrends; 
 
   const DashboardLoaded({
     required this.healthScore,
@@ -29,7 +30,8 @@ class DashboardLoaded extends DashboardState {
     this.isSyncing = false,
     this.lastSyncTime,
     this.visibleMetrics = const {},
-    this.trendDepressed = TrendDepressed.thirtyDays, 
+    this.trendDepressed = TrendDepressed.thirtyDays,
+    this.moodTrends = const {}, 
   });
 
   DashboardLoaded copyWith({
@@ -43,6 +45,7 @@ class DashboardLoaded extends DashboardState {
     DateTime? lastSyncTime,
     Set<MetricType>? visibleMetrics,
     TrendDepressed? trendDepressed,
+    Map<String, dynamic>? moodTrends, // ✅ NEW
   }) {
     return DashboardLoaded(
       healthScore: healthScore ?? this.healthScore,
@@ -55,6 +58,7 @@ class DashboardLoaded extends DashboardState {
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
       visibleMetrics: visibleMetrics ?? this.visibleMetrics,
       trendDepressed: trendDepressed ?? this.trendDepressed,
+      moodTrends: moodTrends ?? this.moodTrends, 
     );
   }
 
@@ -70,5 +74,6 @@ class DashboardLoaded extends DashboardState {
         lastSyncTime ?? DateTime(0),
         visibleMetrics,
         trendDepressed,
+        moodTrends, 
       ];
 }

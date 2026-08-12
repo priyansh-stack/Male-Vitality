@@ -1,13 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 class AppLogger {
-  static void log(String message, {String? tag}) {
-    final String prefix = tag != null ? '[$tag] ' : '';
-    debugPrint('$prefix$message');
+  static void i(String message) {
+    debugPrint('[INFO] $message');
   }
-  
-  static void auth(String message) => log(message, tag: 'AUTH');
-  static void router(String message) => log(message, tag: 'ROUTER');
-  static void onboarding(String message) => log(message, tag: 'ONBOARDING');
-  static void dashboard(String message) => log(message, tag: 'DASHBOARD');
+
+  static void w(String message) {
+    debugPrint('[WARNING] $message');
+  }
+
+  static void e(String message, [dynamic error]) {
+    debugPrint('[ERROR] $message ${error != null ? "- $error" : ""}');
+  }
 }

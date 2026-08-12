@@ -5,6 +5,7 @@ import '../models/health_score.dart';
 import '../models/health_enums.dart';
 import '../models/user_profile.dart';
 import 'firestore_service.dart';
+import 'clinical_engine.dart';
 
 class DatabaseService {
   final FirestoreService firestoreService;
@@ -52,19 +53,81 @@ class DatabaseService {
     );
   }
 
-  // Health Score
+  // ============================================================
+  //  UPDATED: HEALTH SCORE WITH MENTAL WELLNESS
+  // ============================================================
   Future<HealthScore> calculateHealthScore(String userId) async {
-    return await firestoreService.calculateHealthScore(userId);
+    try {
+      // Fetch physical metrics (30 days)
+      final metrics = await firestoreService.getRecentMetrics(userId, days: 30);
+    
+      //  Fetch mood entries for mental score (7 days)
+      final moodEntries = await firestoreService.getMoodEntries(userId, days: 7);
+      
+      // Calculate combined health score
+      final healthScore = ClinicalEngine.calculateHealthScore(
+        metrics: metrics,
+        moodEntries: moodEntries,
+      );
+      
+      return healthScore;
+    } catch (e) {
+      return HealthScore(
+        score: 50,
+        calculatedAt: DateTime.now(),
+        categoryScores: const {},
+        recommendations: const ["Error calculating score. Please try again."],
+        userId: userId,
+      );
+    }
   }
 
-  // Today's Focus
+  //  UPDATED: TODAY'S FOCUS WITH MENTAL WELLNESS
   Future<TodayFocus> getTodayFocus(String userId) async {
-    return await firestoreService.getTodayFocus(userId);
+    try {
+      final metrics = await firestoreService.getRecentMetrics(userId, days: 1);
+      final moodEntries = await firestoreService.getMoodEntries(userId, days: 1);
+      
+      return ClinicalEngine.getTodayFocus(
+        metrics: metrics,
+        moodEntries: moodEntries,
+      );
+    } catch (e) {
+      return TodayFocus(
+        title: "Daily Check-in",
+        description: "Stay healthy today! Let's log some vitals.",
+        type: FocusType.bloodPressure,
+        priority: 1,
+        time: DateTime.now(),
+        actions: const [],
+      );
+    }
   }
 
-  // Abnormal Metrics
+  // UPDATED: ABNORMAL METRICS WITH MORE CHECKS
   Future<List<AbnormalMetrices>> getAbnormalMetrics(String userId) async {
-    return await firestoreService.getAbnormalMetrics(userId);
+    try {
+      final metrics = await firestoreService.getRecentMetrics(userId, days: 2);
+      return ClinicalEngine.scanForAbnormalities(metrics);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  //  NEW: MOOD TREND ANALYSIS
+  Future<Map<String, dynamic>> analyzeMoodTrends(String userId) async {
+    try {
+      final moodEntries = await firestoreService.getMoodEntries(userId, days: 14);
+      return ClinicalEngine.analyzeMoodTrends(moodEntries);
+    } catch (e) {
+      return {
+        'trend': 'stable',
+        'average': 0.0,
+        'consistency': 0.0,
+        'riskLevel': 'low',
+        'insights': ['Unable to analyze mood trends at this time.'],
+      };
+    }
   }
 
   // User Preferences

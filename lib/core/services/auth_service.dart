@@ -1,6 +1,8 @@
-
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:crypto/crypto.dart';
 import 'firebase_service.dart';
 
 class AuthUser {
@@ -38,15 +40,22 @@ class AuthUser {
 class AuthService extends ChangeNotifier {
   AuthUser? _currentUser;
   bool _isInitialized = false;
-  bool _isLoading = true;  // ✅ Added loading state
+  bool _isLoading = true;
 
   AuthUser? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
   bool get isInitialized => _isInitialized;
-  bool get isLoading => _isLoading;  
+  bool get isLoading => _isLoading;
 
   AuthService() {
     _checkInitialAuth();
+  }
+
+  //  Helper method to hash password using SHA-256
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 
   void _checkInitialAuth() {
@@ -59,7 +68,6 @@ class AuthService extends ChangeNotifier {
           _isInitialized = true;
           
           if (user != null) {
-            // User exists, restore session
             _currentUser = AuthUser(
               uid: user.uid,
               email: user.email ?? '',
@@ -81,7 +89,6 @@ class AuthService extends ChangeNotifier {
         notifyListeners();
       }
     } else {
-      //  No auto-creation of demo user
       _isLoading = false;
       _isInitialized = true;
       _currentUser = null;
@@ -90,33 +97,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  //  New method to check current user
-  Future<bool> checkCurrentUser() async {
-    if (!FirebaseService.isInitialized) {
-      return false;
-    }
-    
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        _currentUser = AuthUser(
-          uid: user.uid,
-          email: user.email ?? '',
-          displayName: user.displayName ?? 'Health User',
-          photoUrl: user.photoURL,
-        );
-        _isInitialized = true;
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      }
-      return false;
-    } catch (e) {
-      debugPrint('Error checking current user: $e');
-      return false;
-    }
-  }
-
+  //  FIX: Hash password before sending to Firebase
   Future<AuthUser> signUpWithEmail({
     required String email,
     required String password,
@@ -124,9 +105,12 @@ class AuthService extends ChangeNotifier {
   }) async {
     if (FirebaseService.isInitialized) {
       try {
+        //  Hash the password before sending to Firebase
+        final hashedPassword = _hashPassword(password);
+        
         final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
-          password: password,
+          password: hashedPassword, // Send hashed password
         );
         await credential.user?.updateDisplayName(displayName);
         final user = AuthUser(
@@ -145,7 +129,7 @@ class AuthService extends ChangeNotifier {
         rethrow;
       }
     } else {
-      //  Development fallback (only for development)
+      // Development fallback (only for development)
       if (kDebugMode) {
         final user = AuthUser(
           uid: 'uid_${DateTime.now().millisecondsSinceEpoch}',
@@ -162,15 +146,19 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  //  FIX: Also hash password for sign in
   Future<AuthUser> signInWithEmail({
     required String email,
     required String password,
   }) async {
     if (FirebaseService.isInitialized) {
       try {
+        //  Hash the password before sending to Firebase
+        final hashedPassword = _hashPassword(password);
+        
         final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
-          password: password,
+          password: hashedPassword, // Send hashed password
         );
         final user = AuthUser(
           uid: credential.user!.uid,
@@ -188,7 +176,7 @@ class AuthService extends ChangeNotifier {
         rethrow;
       }
     } else {
-      //  Development fallback (only for development)
+      // Development fallback (only for development)
       if (kDebugMode) {
         final name = email.split('@').first;
         final displayName = name.isNotEmpty ? name[0].toUpperCase() + name.substring(1) : 'Health Explorer';
@@ -233,7 +221,6 @@ class AuthService extends ChangeNotifier {
         rethrow;
       }
     } else {
-      //  Development fallback (only for development)
       if (kDebugMode) {
         final user = AuthUser(
           uid: 'google_uid_${DateTime.now().millisecondsSinceEpoch}',
@@ -251,19 +238,44 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
-  if (FirebaseService.isInitialized) {
+    if (FirebaseService.isInitialized) {
+      try {
+        debugPrint(' Signing out from Firebase...');
+        await FirebaseAuth.instance.signOut();
+        debugPrint(' Signed out from Firebase');
+      } catch (e) {
+        debugPrint(' Sign out error: $e');
+      }
+    }
+    _currentUser = null;
+    _isLoading = false;
+    notifyListeners();
+    debugPrint(' Local auth state cleared');
+  }
+
+  Future<bool> checkCurrentUser() async {
+    if (!FirebaseService.isInitialized) {
+      return false;
+    }
+    
     try {
-      debugPrint(' Signing out from Firebase...');
-      await FirebaseAuth.instance.signOut();
-      debugPrint(' Signed out from Firebase');
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        _currentUser = AuthUser(
+          uid: user.uid,
+          email: user.email ?? '',
+          displayName: user.displayName ?? 'Health User',
+          photoUrl: user.photoURL,
+        );
+        _isInitialized = true;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+      return false;
     } catch (e) {
-      debugPrint(' Sign out error: $e');
+      debugPrint('Error checking current user: $e');
+      return false;
     }
   }
-  //  Clear local user regardless of Firebase result
-  _currentUser = null;
-  _isLoading = false;
-  notifyListeners();
-  debugPrint(' Local auth state cleared');
-}
 }

@@ -31,7 +31,6 @@ class UnifiedDashboardScreen extends StatefulWidget {
     required this.userId,
   });
 
-  //  Static method to reset state on logout
   static void resetState() {
     _UnifiedDashboardScreenState.resetState();
   }
@@ -41,17 +40,14 @@ class UnifiedDashboardScreen extends StatefulWidget {
 }
 
 class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
-  //  STATIC - Persist across widget instances
   static bool _isLoading = true;
   static bool _isInitialLoad = true;
   static bool _isLoadingData = false;
   static String? _lastLoadedUserId;
   static DateTime? _lastLoadTime;
   
-  //  Minimum time between loads (500ms)
   static const Duration _minLoadInterval = Duration(milliseconds: 500);
 
-  //  Static reset method
   static void resetState() {
     _isLoading = true;
     _isInitialLoad = true;
@@ -65,7 +61,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
   void initState() {
     super.initState();
     _isInitialLoad = true;
-    //  Use a single post-frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDashboardData();
     });
@@ -74,7 +69,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
   @override
   void didUpdateWidget(UnifiedDashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    //  Only reload if userId changed and we're not in a loop
     if (oldWidget.userId != widget.userId && widget.userId.isNotEmpty) {
       _loadDashboardData();
     }
@@ -86,16 +80,13 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
   }
 
   void _loadDashboardData() {
-    //  Prevent concurrent loads
     if (_isLoadingData) {
       debugPrint('⏭️ Load already in progress, skipping');
       return;
     }
 
-    //  Get userId from the most reliable source
     String userId = widget.userId;
     
-    // Try auth state if widget userId is empty
     if (userId.isEmpty) {
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
@@ -103,7 +94,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
       }
     }
 
-    //  Validate userId
     if (userId.isEmpty) {
       debugPrint(' No userId available, skipping load');
       if (_isInitialLoad) {
@@ -115,7 +105,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
       return;
     }
 
-    // Prevent loading the same user multiple times in quick succession
     final now = DateTime.now();
     if (_lastLoadedUserId == userId && 
         _lastLoadTime != null && 
@@ -124,7 +113,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
       return;
     }
 
-    //  Set loading flags
     _isLoadingData = true;
     _lastLoadedUserId = userId;
     _lastLoadTime = now;
@@ -137,7 +125,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
 
     debugPrint(' Loading dashboard for userId: $userId');
     
-    //  Dispatch the load event
     context.read<DashboardBloc>().add(
       LoadDashboardData(userId: userId),
     );
@@ -150,7 +137,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
     final healthSyncState = context.watch<HealthSyncBloc>().state;
     final dashboardState = context.watch<DashboardBloc>().state;
 
-    //  Get user info from auth state
     String userId = '';
     String userName = 'User';
     String userEmail = '';
@@ -161,7 +147,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
       userEmail = authState.user.email;
     }
 
-    //  Use onboarding profile if available
     final profile = onboardingState.completedProfile;
     if (profile != null) {
       userName = profile.displayName;
@@ -173,9 +158,7 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
         hour < 17 ? 'Good Afternoon' :
         'Good Evening';
 
-    // If not authenticated, show login prompt
     if (authState is! Authenticated) {
-      // Reset loading state if needed
       if (_isLoading || _isLoadingData) {
         _isLoading = false;
         _isLoadingData = false;
@@ -205,13 +188,11 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
       );
     }
 
-    // Handle dashboard state
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
       appBar: _buildAppBar(context, userName, userEmail),
       body: BlocConsumer<DashboardBloc, DashboardState>(
         listener: (context, state) {
-          // Reset loading flag when we get a response
           if (state is DashboardLoaded || state is DashboardError) {
             _isLoadingData = false;
             if (_isInitialLoad) {
@@ -240,7 +221,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
           }
         },
         builder: (context, state) {
-          //  Show loading state
           if (_isLoading || state is DashboardLoading) {
             return const Center(
               child: Column(
@@ -262,7 +242,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
             );
           }
 
-          //  Show error state
           if (state is DashboardError) {
             return Center(
               child: Padding(
@@ -305,9 +284,7 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
             );
           }
 
-          //  Show main dashboard
           if (state is DashboardLoaded) {
-            //  Mark initial load as complete
             if (_isInitialLoad) {
               _isInitialLoad = false;
               _isLoading = false;
@@ -375,6 +352,10 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
                       ),
                     const SizedBox(height: 16),
 
+                    // ✅ FIXED: Mood Insights Card with null safety
+                    _buildMoodInsightsCard(context, state.moodTrends),
+                    const SizedBox(height: 16),
+
                     // Health Integrations
                     _buildHealthIntegrations(context, healthSyncState),
                     const SizedBox(height: 24),
@@ -434,26 +415,21 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
             );
           }
 
-          // ✅ Default: show loading
           return const Center(
             child: CircularProgressIndicator(),
           );
         },
       ),
-      // ✅ UPDATED FAB WITH AUTO-REFRESH
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // ✅ Navigate to AddMetricScreen and wait for result
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => AddMetricScreen(userId: userId),
             ),
           ).then((result) {
-            // ✅ Refresh dashboard when metric is added
             if (result == true) {
               debugPrint('🔄 Metric added, refreshing dashboard...');
-              // Reset load flags to force refresh
               _isLoadingData = false;
               _lastLoadedUserId = null;
               _loadDashboardData();
@@ -574,6 +550,166 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
   }
 
   // ============= Helper Widgets =============
+
+  // ✅ FIXED: Mood Insights Card with null safety
+  Widget _buildMoodInsightsCard(BuildContext context, Map<String, dynamic>? moodTrends) {
+    // Handle null or empty case
+    if (moodTrends == null || moodTrends.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Safely extract values with defaults
+    final trend = moodTrends['trend'] as String? ?? 'stable';
+    final average = moodTrends['average'] as double? ?? 0.0;
+    final riskLevel = moodTrends['riskLevel'] as String? ?? 'low';
+    final insights = moodTrends['insights'] as List<String>? ?? [];
+
+    Color trendColor;
+    String trendIcon;
+    if (trend == 'improving') {
+      trendColor = AppTheme.healthyGreen;
+      trendIcon = '📈';
+    } else if (trend == 'declining') {
+      trendColor = AppTheme.dangerRed;
+      trendIcon = '📉';
+    } else {
+      trendColor = AppTheme.warningOrange;
+      trendIcon = '➡️';
+    }
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3E8FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.psychology_rounded,
+                    color: Color(0xFF7C3AED),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Mood Insights',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            'Average: ${average.toStringAsFixed(1)}/10',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textMedium,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: riskLevel == 'high' 
+                                  ? Colors.red.shade100 
+                                  : riskLevel == 'moderate'
+                                      ? Colors.orange.shade100
+                                      : Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              riskLevel.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: riskLevel == 'high'
+                                    ? Colors.red
+                                    : riskLevel == 'moderate'
+                                        ? Colors.orange
+                                        : Colors.green,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '$trendIcon Trend: ${trend.toUpperCase()}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: trendColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (insights.isNotEmpty)
+              ...insights.map((insight) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '• ',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.textMedium,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          insight,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: insight.contains('⚠️') 
+                                ? Colors.red 
+                                : AppTheme.textMedium,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: () {
+                  context.go('/mood-history?userId=${widget.userId}');
+                },
+                icon: const Icon(Icons.mood, size: 16),
+                label: const Text('View Mood History'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF7C3AED),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildQuickStatsRow(BuildContext context, OnboardingState state) {
     final lifeStage = state.detectedLifeStage;

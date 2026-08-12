@@ -33,59 +33,61 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   }
 
   Future<void> _onLoadDashboardData(
-    LoadDashboardData event,
-    Emitter<DashboardState> emit,
-  ) async {
-    if (event.userId.isEmpty) {
-      emit(const DashboardError(
-        message: 'User ID cannot be empty. Please log in again.',
-      ));
-      return;
-    }
-
-    try {
-      emit(const DashboardLoading(message: 'Loading your health data...'));
-
-      final results = await Future.wait([
-        databaseService.calculateHealthScore(event.userId),
-        databaseService.getRecentMetrics(event.userId, days: 7),
-        _loadAllMetricsTrend(event.userId),
-        databaseService.getTodayFocus(event.userId),
-        databaseService.getAbnormalMetrics(event.userId),
-        databaseService.getAllMetrics(event.userId),
-        databaseService.getUserVisibleMetrics(event.userId),
-      ]);
-
-      final healthScore = results[0] as HealthScore;
-      final recentMetrics = results[1] as List<HealthMetric>;
-      final metricsTrend = results[2] as Map<MetricType, List<HealthMetric>>;
-      final todayFocus = results[3] as TodayFocus;
-      final abnormalMetrics = results[4] as List<AbnormalMetrices>; 
-      final allMetrics = results[5] as List<HealthMetric>;
-      final visibleMetrics = results[6] as Set<MetricType>;
-
-      emit(DashboardLoaded(
-        healthScore: healthScore,
-        recentMetrics: recentMetrics,
-        metricsTrend: metricsTrend,
-        todayFocus: todayFocus,
-        abnormalMetrics: abnormalMetrics,
-        allMetrics: allMetrics,
-        isSyncing: false,
-        lastSyncTime: DateTime.now(),
-        visibleMetrics: visibleMetrics.isEmpty
-            ? MetricType.values.toSet()
-            : visibleMetrics,
-        trendDepressed: TrendDepressed.thirtyDays, 
-      ));
-    } catch (e) {
-      emit(DashboardError(
-        message: 'Failed to load dashboard: $e',
-        exception: e is Exception ? e : null,
-      ));
-    }
+  LoadDashboardData event,
+  Emitter<DashboardState> emit,
+) async {
+  if (event.userId.isEmpty) {
+    emit(const DashboardError(
+      message: 'User ID cannot be empty. Please log in again.',
+    ));
+    return;
   }
 
+  try {
+    emit(const DashboardLoading(message: 'Loading your health data...'));
+
+    final results = await Future.wait([
+      databaseService.calculateHealthScore(event.userId),
+      databaseService.getRecentMetrics(event.userId, days: 7),
+      _loadAllMetricsTrend(event.userId),
+      databaseService.getTodayFocus(event.userId),
+      databaseService.getAbnormalMetrics(event.userId),
+      databaseService.getAllMetrics(event.userId),
+      databaseService.getUserVisibleMetrics(event.userId),
+      databaseService.analyzeMoodTrends(event.userId), 
+    ]);
+
+    final healthScore = results[0] as HealthScore;
+    final recentMetrics = results[1] as List<HealthMetric>;
+    final metricsTrend = results[2] as Map<MetricType, List<HealthMetric>>;
+    final todayFocus = results[3] as TodayFocus;
+    final abnormalMetrics = results[4] as List<AbnormalMetrices>;
+    final allMetrics = results[5] as List<HealthMetric>;
+    final visibleMetrics = results[6] as Set<MetricType>;
+    final moodTrends = results[7] as Map<String, dynamic>;
+
+    emit(DashboardLoaded(
+      healthScore: healthScore,
+      recentMetrics: recentMetrics,
+      metricsTrend: metricsTrend,
+      todayFocus: todayFocus,
+      abnormalMetrics: abnormalMetrics,
+      allMetrics: allMetrics,
+      isSyncing: false,
+      lastSyncTime: DateTime.now(),
+      visibleMetrics: visibleMetrics.isEmpty
+          ? MetricType.values.toSet()
+          : visibleMetrics,
+      trendDepressed: TrendDepressed.thirtyDays,
+      moodTrends: moodTrends,
+    ));
+  } catch (e) {
+    emit(DashboardError(
+      message: 'Failed to load dashboard: $e',
+      exception: e is Exception ? e : null,
+    ));
+  }
+}
   Future<void> _onRefreshDashboard(
     RefreshDashboard event,
     Emitter<DashboardState> emit,
@@ -114,7 +116,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       final metrics = await databaseService.getMetricTrend(
         userId: event.userId,
         metricType: event.metricType,
-        depressed: event.trendDepressed, 
+        depressed: event.trendDepressed,
       );
 
       emit(MetricTrendLoaded(
@@ -299,14 +301,13 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           add(LoadMetricTrend(
             userId: currentState.healthScore.userId!,
             metricType: metricType,
-            trendDepressed: event.trendDepressed, 
+            trendDepressed: event.trendDepressed,
           ));
         }
       }
     }
   }
 
-  //  Replaced 10 separate queries with 1 grouped query to drastically reduce reads
   Future<Map<MetricType, List<HealthMetric>>> _loadAllMetricsTrend(String userId) async {
     final result = <MetricType, List<HealthMetric>>{};
     
