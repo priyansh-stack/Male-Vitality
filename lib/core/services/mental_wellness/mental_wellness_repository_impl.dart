@@ -14,7 +14,6 @@ import 'package:life_stage_health_app/core/models/mental_wellness/search_criteri
 import 'package:life_stage_health_app/core/models/mental_wellness/teletherapy_provider.dart';
 import 'package:life_stage_health_app/core/models/mental_wellness/therapist.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../firebase_service.dart';
 import 'mental_wellness_repository.dart';
 
 class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
