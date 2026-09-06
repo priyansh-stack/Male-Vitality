@@ -31,6 +31,20 @@ import 'package:life_stage_health_app/features/mental_wellness/screens/stress_ma
 import 'package:life_stage_health_app/features/mental_wellness/screens/crisis_resource_access_screen.dart';
 import 'package:life_stage_health_app/features/mental_wellness/screens/therapist_finder_screen.dart';
 import 'package:life_stage_health_app/core/models/life_stage.dart';
+import 'package:life_stage_health_app/core/di/service_locator.dart';
+import 'package:life_stage_health_app/features/health_modules/screens/health_modules_screen.dart';
+import 'package:life_stage_health_app/features/track/screens/unified_track_screen.dart';
+import 'package:life_stage_health_app/features/learn/screens/learn_screen.dart';
+import 'package:life_stage_health_app/features/profile/screens/profile_screen.dart';
+import 'package:life_stage_health_app/features/preventive_care/presentation/screens/preventive_care_screen.dart';
+import 'package:life_stage_health_app/features/fitness_nutrition/presentation/screens/fitness_nutrition_screen.dart';
+import 'package:life_stage_health_app/features/sexual_health/presentation/screens/sexual_health_screen.dart';
+import 'package:life_stage_health_app/features/medication/presentation/screens/medication_manager_screen.dart';
+import 'package:life_stage_health_app/features/sleep/presentation/screens/sleep_optimizer_screen.dart';
+import 'package:life_stage_health_app/features/substance_use/presentation/screens/substance_assessment_screen.dart';
+import 'package:life_stage_health_app/features/telehealth/presentation/screens/telehealth_screen.dart';
+import 'package:life_stage_health_app/features/senior_care/presentation/screens/senior_care_screen.dart';
+import 'package:life_stage_health_app/features/sexual_health/presentation/screens/fertility_tracker_screen.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> _rootNavigatorKey = 
@@ -80,15 +94,40 @@ class AppRouter {
               return UnifiedDashboardScreen(userId: userId);
             },
           ),
-          // Health Tab
+          // Tab 2: Health Modules (Life-Stage Adaptive)
+          GoRoute(
+            path: '/health-modules',
+            name: 'health-modules',
+            builder: (context, state) => const HealthModulesScreen(),
+          ),
+          // Tab 3: Unified Track
+          GoRoute(
+            path: '/track',
+            name: 'track',
+            builder: (context, state) {
+              final authState = context.read<AuthBloc>().state;
+              final userId = authState is Authenticated ? authState.user.uid : 'guest';
+              return UnifiedTrackScreen(userId: userId);
+            },
+          ),
+          // Tab 4: Learn
+          GoRoute(
+            path: '/learn',
+            name: 'learn',
+            builder: (context, state) => const LearnScreen(),
+          ),
+          // Tab 5: Profile
+          GoRoute(
+            path: '/profile',
+            name: 'profile',
+            builder: (context, state) => const ProfileScreen(),
+          ),
+          // Legacy aliases
           GoRoute(
             path: '/health',
             name: 'health',
-            builder: (context, state) {
-              return const HealthTabScreen();
-            },
+            builder: (context, state) => const HealthModulesScreen(),
           ),
-          // Mental Wellness Tab
           GoRoute(
             path: '/wellness',
             name: 'wellness',
@@ -96,14 +135,6 @@ class AppRouter {
               final userId = state.uri.queryParameters['userId'] ?? 
                   (state.extra as String?) ?? '';
               return MentalWellnessTabScreen(userId: userId);
-            },
-          ),
-          // Profile Tab
-          GoRoute(
-            path: '/profile',
-            name: 'profile',
-            builder: (context, state) {
-              return const ProfileTabScreen();
             },
           ),
         ],
@@ -278,6 +309,183 @@ class AppRouter {
           final userId = state.uri.queryParameters['userId'] ?? 
               (state.extra as String?) ?? '';
           return TherapistFinderScreen(userId: userId);
+        },
+      ),
+
+      // ===== PREVENTIVE CARE ROUTE =====
+      GoRoute(
+        path: '/preventive-care',
+        name: 'preventive-care',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          final profile = context.read<OnboardingBloc>().state.completedProfile;
+          return PreventiveCareScreen(
+            userId: userId,
+            repository: ServiceLocator.screeningRepository,
+            userAge: profile?.age ?? 35,
+            isSmoker: profile?.lifestyleFactors.isSmoker ?? false,
+          );
+        },
+      ),
+
+      // ===== FITNESS & NUTRITION ROUTE =====
+      GoRoute(
+        path: '/fitness-nutrition',
+        name: 'fitness-nutrition',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          final profile = context.read<OnboardingBloc>().state.completedProfile;
+          return FitnessNutritionScreen(
+            userId: userId,
+            lifeStage: profile?.lifeStage ?? LifeStage.adult,
+            repository: ServiceLocator.fitnessNutritionRepository,
+          );
+        },
+      ),
+
+      // ===== HORMONE & SEXUAL HEALTH ROUTES =====
+      GoRoute(
+        path: '/sexual-health',
+        name: 'sexual-health',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return SexualHealthScreen(
+            userId: userId,
+            repository: ServiceLocator.sexualHealthRepository,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/sexual-health/sti',
+        name: 'sexual-health-sti',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return SexualHealthScreen(
+            userId: userId,
+            repository: ServiceLocator.sexualHealthRepository,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/sexual-health/fertility',
+        name: 'sexual-health-fertility',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return FertilityTrackerScreen(
+            userId: userId,
+            repository: ServiceLocator.fertilityRepository,
+          );
+        },
+      ),
+
+      // ===== MEDICATION & POLYPHARMACY ROUTES =====
+      GoRoute(
+        path: '/medications',
+        name: 'medications',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return MedicationManagerScreen(
+            userId: userId,
+            repository: ServiceLocator.medicationRepository,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/medications/interactions',
+        name: 'medications-interactions',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return MedicationManagerScreen(
+            userId: userId,
+            repository: ServiceLocator.medicationRepository,
+          );
+        },
+      ),
+
+      // ===== SLEEP OPTIMIZER ROUTE =====
+      GoRoute(
+        path: '/sleep-optimizer',
+        name: 'sleep-optimizer',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return SleepOptimizerScreen(
+            userId: userId,
+            repository: ServiceLocator.sleepRepository,
+          );
+        },
+      ),
+
+      // ===== SUBSTANCE USE ASSESSMENT ROUTE =====
+      GoRoute(
+        path: '/substance-assessment',
+        name: 'substance-assessment',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return SubstanceAssessmentScreen(
+            userId: userId,
+            repository: ServiceLocator.substanceRepository,
+          );
+        },
+      ),
+
+      // ===== TELEHEALTH ROUTE =====
+      GoRoute(
+        path: '/telehealth',
+        name: 'telehealth',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return TelehealthScreen(
+            userId: userId,
+            repository: ServiceLocator.telehealthRepository,
+          );
+        },
+      ),
+
+      // ===== SENIOR CARE & FALL DETECTION ROUTES =====
+      GoRoute(
+        path: '/senior-care/fall-detection',
+        name: 'senior-care-fall',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return SeniorCareScreen(
+            userId: userId,
+            repository: ServiceLocator.seniorCareRepository,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/senior-care/brain-training',
+        name: 'senior-care-brain',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return SeniorCareScreen(
+            userId: userId,
+            repository: ServiceLocator.seniorCareRepository,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/senior-care/caregiver',
+        name: 'senior-care-caregiver',
+        builder: (context, state) {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : 'guest';
+          return SeniorCareScreen(
+            userId: userId,
+            repository: ServiceLocator.seniorCareRepository,
+          );
         },
       ),
 
@@ -473,12 +681,14 @@ class _MainScaffoldWithNavBarState extends State<MainScaffoldWithNavBar> {
       final path = route.settings.name ?? '';
       if (path.contains('/dashboard')) {
         _currentIndex = 0;
-      } else if (path.contains('/health')) {
+      } else if (path.contains('/health-modules') || path.contains('/health')) {
         _currentIndex = 1;
-      } else if (path.contains('/wellness')) {
+      } else if (path.contains('/track')) {
         _currentIndex = 2;
-      } else if (path.contains('/profile')) {
+      } else if (path.contains('/learn')) {
         _currentIndex = 3;
+      } else if (path.contains('/profile')) {
+        _currentIndex = 4;
       }
     }
   }
@@ -493,11 +703,27 @@ class _MainScaffoldWithNavBarState extends State<MainScaffoldWithNavBar> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: widget.child,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFFDC2626),
+        icon: const Icon(Icons.emergency, color: Colors.white, size: 20),
+        label: const Text(
+          '988 Crisis',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+        ),
+        onPressed: () {
+          final authState = context.read<AuthBloc>().state;
+          final userId = authState is Authenticated ? authState.user.uid : '';
+          context.push('/crisis-resources?userId=$userId');
+        },
+      ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF1E293B),
         currentIndex: _currentIndex,
-        selectedItemColor: const Color(0xFF4F46E5),
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: const Color(0xFF38BDF8),
+        unselectedItemColor: Colors.white60,
+        selectedFontSize: 11,
+        unselectedFontSize: 10,
         onTap: (index) {
           final authState = context.read<AuthBloc>().state;
           final userId = authState is Authenticated ? authState.user.uid : '';
@@ -511,12 +737,15 @@ class _MainScaffoldWithNavBarState extends State<MainScaffoldWithNavBar> {
               context.go('/dashboard?userId=$userId');
               break;
             case 1:
-              context.go('/health');
+              context.go('/health-modules');
               break;
             case 2:
-              context.go('/wellness?userId=$userId');
+              context.go('/track');
               break;
             case 3:
+              context.go('/learn');
+              break;
+            case 4:
               context.go('/profile');
               break;
           }
@@ -524,15 +753,19 @@ class _MainScaffoldWithNavBarState extends State<MainScaffoldWithNavBar> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_rounded),
-            label: 'Dashboard',
+            label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_rounded),
-            label: 'Health',
+            icon: Icon(Icons.grid_view_rounded),
+            label: 'Modules',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.self_improvement_rounded),
-            label: 'Wellness',
+            icon: Icon(Icons.add_chart_rounded),
+            label: 'Track',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.menu_book_rounded),
+            label: 'Learn',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_rounded),

@@ -19,6 +19,16 @@ import 'core/services/weareable_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/dashboard/usecase/add_health_metric.dart';
 import 'router/app_router.dart';
+import 'core/di/service_locator.dart';
+import 'features/preventive_care/domain/repositories/i_screening_repository.dart';
+import 'features/fitness_nutrition/domain/repositories/i_fitness_nutrition_repository.dart';
+import 'features/sexual_health/domain/repositories/i_sexual_health_repository.dart';
+import 'features/medication/domain/repositories/i_medication_repository.dart';
+import 'features/sleep/domain/repositories/i_sleep_repository.dart';
+import 'features/substance_use/domain/repositories/i_substance_repository.dart';
+import 'features/telehealth/domain/repositories/i_telehealth_repository.dart';
+import 'features/senior_care/domain/repositories/i_senior_care_repository.dart';
+import 'features/sexual_health/domain/repositories/i_fertility_repository.dart';
 import 'core/services/mental_wellness/mental_wellness_repository.dart';
 import 'core/services/mental_wellness/mental_wellness_repository_impl.dart';
 import 'core/bloc/mental_wellness/mood_bloc/mood_bloc.dart';
@@ -90,6 +100,9 @@ void main() async {
   );
   final wearableService = WearableService(databaseService);
 
+  // ===== INITIALIZE SERVICE LOCATOR =====
+  ServiceLocator.initialize();
+
   // ===== MENTAL WELLNESS REPOSITORY =====
   final mentalWellnessRepository = MentalWellnessRepositoryImpl(
     firestore: firestore,
@@ -105,6 +118,17 @@ void main() async {
         Provider<DatabaseService>.value(value: databaseService),
         Provider<WearableService>.value(value: wearableService),
         Provider<MentalWellnessRepository>.value(value: mentalWellnessRepository),
+        
+        // Vertical Slice Repositories (Decoupled Interfaces)
+        Provider<IScreeningRepository>.value(value: ServiceLocator.screeningRepository),
+        Provider<IFitnessNutritionRepository>.value(value: ServiceLocator.fitnessNutritionRepository),
+        Provider<ISexualHealthRepository>.value(value: ServiceLocator.sexualHealthRepository),
+        Provider<IMedicationRepository>.value(value: ServiceLocator.medicationRepository),
+        Provider<ISleepRepository>.value(value: ServiceLocator.sleepRepository),
+        Provider<ISubstanceRepository>.value(value: ServiceLocator.substanceRepository),
+        Provider<ITelehealthRepository>.value(value: ServiceLocator.telehealthRepository),
+        Provider<ISeniorCareRepository>.value(value: ServiceLocator.seniorCareRepository),
+        Provider<IFertilityRepository>.value(value: ServiceLocator.fertilityRepository),
         
         // Auth BLoC
         BlocProvider<AuthBloc>(

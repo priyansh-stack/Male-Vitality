@@ -4,9 +4,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     
     <application
-        android:label="life_stage_health_app"
+        android:label="Male Vitality"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:largeHeap="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

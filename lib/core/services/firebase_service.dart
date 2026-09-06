@@ -33,13 +33,12 @@ class FirebaseService {
     debugPrint(' Initializing Firebase for Web...');
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyB4HysGplsObvgAGJrbKDvMPWNTZIXxFlQ",
-        authDomain: "male-vitality-cdbb6.firebaseapp.com",
-        projectId: "male-vitality-cdbb6",
-        storageBucket: "male-vitality-cdbb6.firebasestorage.app",
-        messagingSenderId: "548186846068",
-        appId: "1:548186846068:web:1c6e75fabb1e11fda93221",
-        measurementId: "G-E7KV00PCGC"
+        apiKey: "AIzaSyBAj-C5oNg9L2tfNoOTdpKMHrATqD0o3tQ",
+        authDomain: "male-vitality-427d9.firebaseapp.com",
+        projectId: "male-vitality-427d9",
+        storageBucket: "male-vitality-427d9.firebasestorage.app",
+        messagingSenderId: "932554051961",
+        appId: "1:932554051961:web:8727cb85ada8c0ed739fa8",
       ),
     );
   }
@@ -59,14 +58,24 @@ class FirebaseService {
       debugPrint('   App ID: ${app.options.appId}');
       
     } catch (e) {
-      throw Exception(
-        'Firebase initialization failed on mobile.\n'
-        'Please ensure:\n'
-        '• Android: android/app/google-services.json exists\n'
-        '• iOS: ios/Runner/GoogleService-Info.plist exists\n'
-        '• Both files are properly configured\n'
-        'Error: $e'
-      );
+      debugPrint('Default Firebase.initializeApp() error: $e. Falling back to explicit options.');
+      try {
+        await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: "AIzaSyCtld6v3Ti2G3-FYV_mQKRsU66_Vl9c694",
+            appId: "1:932554051961:android:6f69c0b6c7f9d645739fa8",
+            messagingSenderId: "932554051961",
+            projectId: "male-vitality-427d9",
+            storageBucket: "male-vitality-427d9.firebasestorage.app",
+          ),
+        );
+        debugPrint(' Firebase initialized using fallback options');
+      } catch (fallbackError) {
+        throw Exception(
+          'Firebase initialization failed on mobile.\n'
+          'Error: $e\nFallback Error: $fallbackError'
+        );
+      }
     }
   }
 

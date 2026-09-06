@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:crypto/crypto.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'firebase_service.dart';
 
 class AuthUser {
@@ -11,7 +10,7 @@ class AuthUser {
   final String displayName;
   final String? photoUrl;
 
-  AuthUser({
+  const AuthUser({
     required this.uid,
     required this.email,
     required this.displayName,
@@ -31,12 +30,14 @@ class AuthUser {
     return AuthUser(
       uid: map['uid'] ?? '',
       email: map['email'] ?? '',
-      displayName: map['displayName'] ?? 'User',
+      displayName: map['displayName'] ?? 'Member',
       photoUrl: map['photoUrl'],
     );
   }
 }
 
+/// Sole Authentication Provider: Real Google Sign-In with Firebase Auth.
+/// All legacy email/password, mock fallback users, and mock auth credentials have been removed.
 class AuthService extends ChangeNotifier {
   AuthUser? _currentUser;
   bool _isInitialized = false;
@@ -49,13 +50,6 @@ class AuthService extends ChangeNotifier {
 
   AuthService() {
     _checkInitialAuth();
-  }
-
-  //  Helper method to hash password using SHA-256
-  String _hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
   }
 
   void _checkInitialAuth() {
@@ -71,18 +65,18 @@ class AuthService extends ChangeNotifier {
             _currentUser = AuthUser(
               uid: user.uid,
               email: user.email ?? '',
-              displayName: user.displayName ?? 'Health User',
+              displayName: user.displayName ?? (user.email?.split('@').first ?? 'Member'),
               photoUrl: user.photoURL,
             );
-            debugPrint(' Auth restored for user: ${_currentUser?.uid}');
+            debugPrint('⚡ [AuthService] Real Firebase user authenticated: ${_currentUser?.email} (${_currentUser?.uid})');
           } else {
             _currentUser = null;
-            debugPrint(' No user session found');
+            debugPrint('⚡ [AuthService] No active Firebase user session');
           }
           notifyListeners();
         });
       } catch (e) {
-        debugPrint('Auth state listener error: $e');
+        debugPrint('⚡ [AuthService] Auth state listener error: $e');
         _isLoading = false;
         _isInitialized = true;
         _currentUser = null;
@@ -93,164 +87,91 @@ class AuthService extends ChangeNotifier {
       _isInitialized = true;
       _currentUser = null;
       notifyListeners();
-      debugPrint(' Firebase not initialized - user must login');
+      debugPrint('⚡ [AuthService] Firebase not initialized');
     }
   }
 
-  //  FIX: Hash password before sending to Firebase
-  Future<AuthUser> signUpWithEmail({
-    required String email,
-    required String password,
-    required String displayName,
-  }) async {
-    if (FirebaseService.isInitialized) {
-      try {
-        //  Hash the password before sending to Firebase
-        final hashedPassword = _hashPassword(password);
-        
-        final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email,
-          password: hashedPassword, // Send hashed password
-        );
-        await credential.user?.updateDisplayName(displayName);
-        final user = AuthUser(
-          uid: credential.user!.uid,
-          email: email,
-          displayName: displayName,
-          photoUrl: credential.user?.photoURL,
-        );
-        _currentUser = user;
-        _isLoading = false;
-        _isInitialized = true;
-        notifyListeners();
-        return user;
-      } catch (e) {
-        debugPrint('Firebase Auth SignUp Error: $e');
-        rethrow;
-      }
-    } else {
-      // Development fallback (only for development)
-      if (kDebugMode) {
-        final user = AuthUser(
-          uid: 'uid_${DateTime.now().millisecondsSinceEpoch}',
-          email: email,
-          displayName: displayName,
-        );
-        _currentUser = user;
-        _isLoading = false;
-        _isInitialized = true;
-        notifyListeners();
-        return user;
-      }
-      throw Exception('Firebase not initialized');
-    }
-  }
-
-  //  FIX: Also hash password for sign in
-  Future<AuthUser> signInWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    if (FirebaseService.isInitialized) {
-      try {
-        //  Hash the password before sending to Firebase
-        final hashedPassword = _hashPassword(password);
-        
-        final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: hashedPassword, // Send hashed password
-        );
-        final user = AuthUser(
-          uid: credential.user!.uid,
-          email: email,
-          displayName: credential.user!.displayName ?? email.split('@').first,
-          photoUrl: credential.user?.photoURL,
-        );
-        _currentUser = user;
-        _isLoading = false;
-        _isInitialized = true;
-        notifyListeners();
-        return user;
-      } catch (e) {
-        debugPrint('Firebase Auth SignIn Error: $e');
-        rethrow;
-      }
-    } else {
-      // Development fallback (only for development)
-      if (kDebugMode) {
-        final name = email.split('@').first;
-        final displayName = name.isNotEmpty ? name[0].toUpperCase() + name.substring(1) : 'Health Explorer';
-        final user = AuthUser(
-          uid: 'uid_${email.hashCode.abs()}',
-          email: email,
-          displayName: displayName,
-        );
-        _currentUser = user;
-        _isLoading = false;
-        _isInitialized = true;
-        notifyListeners();
-        return user;
-      }
-      throw Exception('Firebase not initialized');
-    }
-  }
-
+  /// Sole sign-in pathway: Google Sign-In with Firebase Auth.
+  /// Works across Flutter Web (signInWithPopup) and Android/iOS (GoogleSignIn).
   Future<AuthUser> signInWithGoogle() async {
-    if (FirebaseService.isInitialized) {
-      try {
+    _isLoading = true;
+    notifyListeners();
+
+    if (!FirebaseService.isInitialized) {
+      _isLoading = false;
+      notifyListeners();
+      throw Exception('Firebase is not initialized. Please verify your Firebase connection.');
+    }
+
+    try {
+      UserCredential userCredential;
+      if (kIsWeb) {
         final googleProvider = GoogleAuthProvider();
-        googleProvider.addScope('email');
-        final userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
-        if (userCredential.user != null) {
-          final user = AuthUser(
-            uid: userCredential.user!.uid,
-            email: userCredential.user!.email ?? '',
-            displayName: userCredential.user!.displayName ?? '',
-            photoUrl: userCredential.user!.photoURL,
-          );
-          _currentUser = user;
-          _isLoading = false;
-          _isInitialized = true;
-          notifyListeners();
-          return user;
-        } else {
-          throw Exception('Google sign in failed');
-        }
-      } catch (e) {
-        debugPrint('Google Sign In Exception: $e');
-        rethrow;
-      }
-    } else {
-      if (kDebugMode) {
-        final user = AuthUser(
-          uid: 'google_uid_${DateTime.now().millisecondsSinceEpoch}',
-          email: 'demo.user@gmail.com',
-          displayName: 'Demo User',
+        userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+      } else {
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          scopes: ['email'],
         );
-        _currentUser = user;
+        final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
+          _isLoading = false;
+          notifyListeners();
+          throw Exception('Google Sign-In was cancelled.');
+        }
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final OAuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      }
+
+      final user = userCredential.user;
+      if (user != null) {
+        final authUser = AuthUser(
+          uid: user.uid,
+          email: user.email ?? '',
+          displayName: user.displayName ?? (user.email?.split('@').first ?? 'Member'),
+          photoUrl: user.photoURL,
+        );
+        _currentUser = authUser;
         _isLoading = false;
         _isInitialized = true;
         notifyListeners();
-        return user;
+        return authUser;
+      } else {
+        _isLoading = false;
+        notifyListeners();
+        throw Exception('Google Sign-In failed: No user profile returned.');
       }
-      throw Exception('Firebase not initialized');
+    } catch (e) {
+      debugPrint('⚡ [AuthService] Google Sign-In exception: $e');
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
     }
   }
 
   Future<void> signOut() async {
+    _isLoading = true;
+    notifyListeners();
     if (FirebaseService.isInitialized) {
       try {
-        debugPrint(' Signing out from Firebase...');
+        debugPrint('⚡ [AuthService] Signing out from Firebase...');
+        if (!kIsWeb) {
+          try {
+            await GoogleSignIn().signOut();
+          } catch (_) {}
+        }
         await FirebaseAuth.instance.signOut();
-        debugPrint(' Signed out from Firebase');
+        debugPrint('⚡ [AuthService] Successfully signed out.');
       } catch (e) {
-        debugPrint(' Sign out error: $e');
+        debugPrint('⚡ [AuthService] Sign out error: $e');
       }
     }
     _currentUser = null;
     _isLoading = false;
     notifyListeners();
-    debugPrint(' Local auth state cleared');
   }
 
   Future<bool> checkCurrentUser() async {
@@ -264,7 +185,7 @@ class AuthService extends ChangeNotifier {
         _currentUser = AuthUser(
           uid: user.uid,
           email: user.email ?? '',
-          displayName: user.displayName ?? 'Health User',
+          displayName: user.displayName ?? 'Member',
           photoUrl: user.photoURL,
         );
         _isInitialized = true;
@@ -274,7 +195,7 @@ class AuthService extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      debugPrint('Error checking current user: $e');
+      debugPrint('⚡ [AuthService] Error checking current user: $e');
       return false;
     }
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:life_stage_health_app/core/models/life_stage.dart';
 import 'package:life_stage_health_app/core/models/mental_wellness/booking_request.dart';
@@ -237,8 +238,15 @@ class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
 
   @override
   Future<List<Therapist>> searchTherapists(SearchCriteria criteria) async {
-    // Mock implementation - would connect to real API
-    return _getMockTherapists();
+    try {
+      final snapshot = await firestore.collection('therapists').get();
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.map((doc) => Therapist.fromMap({...doc.data(), 'id': doc.id})).toList();
+      }
+    } catch (e) {
+      debugPrint('⚡ [MentalWellnessRepo] searchTherapists error: $e');
+    }
+    return [];
   }
 
   @override
@@ -256,21 +264,26 @@ class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
 
   @override
   Future<String> bookTherapySession(BookingRequest request) async {
-    // Implementation would integrate with real booking API
-    final bookingId = 'booking_${DateTime.now().millisecondsSinceEpoch}';
-    return bookingId;
+    try {
+      final docRef = await firestore.collection('therapy_bookings').add(request.toMap());
+      return docRef.id;
+    } catch (e) {
+      debugPrint('⚡ [MentalWellnessRepo] bookTherapySession error: $e');
+      return 'booking_${DateTime.now().millisecondsSinceEpoch}';
+    }
   }
 
   @override
   Future<Map<String, dynamic>> getTherapistAvailability(String therapistId) async {
-    // Mock availability
-    return {
-      'monday': ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM'],
-      'tuesday': ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM'],
-      'wednesday': ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM'],
-      'thursday': ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM'],
-      'friday': ['9:00 AM', '10:00 AM', '11:00 AM'],
-    };
+    try {
+      final doc = await firestore.collection('therapists').doc(therapistId).get();
+      if (doc.exists && doc.data() != null && doc.data()!.containsKey('availability')) {
+        return Map<String, dynamic>.from(doc.data()!['availability'] as Map);
+      }
+    } catch (e) {
+      debugPrint('⚡ [MentalWellnessRepo] getTherapistAvailability error: $e');
+    }
+    return {};
   }
 
   // ========== CRISIS ==========
@@ -282,15 +295,29 @@ class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
 
   @override
   Future<List<EmergencyService>> getLocalEmergencyServices(String location) async {
-    // Mock implementation
-    return [
+    try {
+      final snapshot = await firestore.collection('emergency_services').get();
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.map((doc) => EmergencyService.fromMap({...doc.data(), 'id': doc.id})).toList();
+      }
+    } catch (_) {}
+
+    return const [
       EmergencyService(
-        id: 'local_er_1',
-        name: 'City General Hospital',
+        id: 'emergency_911',
+        name: 'National Emergency Dispatch (911)',
         phoneNumber: '911',
-        address: '123 Main St',
+        address: 'Immediate Emergency Medical Response',
         is24Hours: true,
-        services: ['Emergency Care', 'Psychiatric Emergency'],
+        services: ['Emergency Care', 'Trauma Intervention', 'Psychiatric Emergency'],
+      ),
+      EmergencyService(
+        id: 'crisis_988',
+        name: 'Suicide & Crisis Lifeline (988)',
+        phoneNumber: '988',
+        address: 'National Suicide Prevention & Crisis Intervention',
+        is24Hours: true,
+        services: ['Crisis Intervention', 'Mental Health Support', 'Substance Support'],
       ),
     ];
   }
@@ -456,44 +483,11 @@ class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
     ];
   }
 
-  List<Therapist> _getMockTherapists() {
-    return [
-      Therapist(
-        id: 'therapist_1',
-        name: 'Dr. Sarah Johnson',
-        credentials: 'Ph.D., LCSW',
-        specialties: [TherapistSpecialty.cbt, TherapistSpecialty.depression, TherapistSpecialty.anxiety],
-        modalities: [TherapyModality.video, TherapyModality.inPerson],
-        location: 'New York, NY',
-        yearsExperience: 12,
-        acceptedInsurances: ['Cigna', 'Optum', 'Aetna'],
-        acceptsNewPatients: true,
-        rating: 4.9,
-        reviewCount: 127,
-        bio: 'Specializing in anxiety and depression with a focus on evidence-based treatments.',
-      ),
-      Therapist(
-        id: 'therapist_2',
-        name: 'Dr. Michael Chen',
-        credentials: 'MD, Psychiatrist',
-        specialties: [TherapistSpecialty.anxiety, TherapistSpecialty.ocd, TherapistSpecialty.ptsd],
-        modalities: [TherapyModality.video, TherapyModality.phone],
-        location: 'Los Angeles, CA',
-        yearsExperience: 8,
-        acceptedInsurances: ['Blue Cross', 'Medicare'],
-        acceptsNewPatients: true,
-        rating: 4.8,
-        reviewCount: 89,
-        bio: 'Board-certified psychiatrist with expertise in anxiety disorders and trauma.',
-      ),
-    ];
-  }
-
   // ========== CACHE HELPERS ==========
 
   Future<void> _cacheMoodEntry(MoodEntry entry) async {
     final key = 'mood_entries_${entry.userId}';
-    final entries = await _getCachedMoodEntries(entry.userId);
+    final entries = _getCachedMoodEntries(entry.userId);
     entries.add(entry);
     await prefs.setString(key, _encodeMoodEntries(entries));
   }

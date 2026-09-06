@@ -35,29 +35,43 @@ class CrisisLifelineService {
     }
   }
 
-  // Get local crisis resources
+  // Get local crisis resources (queries Firestore or falls back to official 24/7 national hotlines)
   Future<List<Map<String, dynamic>>> getLocalCrisisResources({
     required double latitude,
     required double longitude,
     double radius = 10, // miles
   }) async {
-    // This would typically use a geolocation query
-    // For now, return mock data
+    try {
+      final snapshot = await firestore.collection('crisis_centers').get();
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+      }
+    } catch (_) {}
+
+    // Verified Official National Crisis Centers
     return [
       {
-        'id': 'local_1',
-        'name': 'Community Crisis Center',
-        'phone': '1-800-273-8255',
-        'address': '123 Main St, City',
-        'distance': 1.2,
+        'id': 'nat_988',
+        'name': '988 Suicide & Crisis Lifeline',
+        'phone': '988',
+        'address': 'Nationwide 24/7 Free & Confidential Support',
+        'distance': 0.0,
         'is24Hours': true,
       },
       {
-        'id': 'local_2',
-        'name': 'Emergency Room - City Hospital',
-        'phone': '911',
-        'address': '456 Health Blvd, City',
-        'distance': 2.8,
+        'id': 'nat_samhsa',
+        'name': 'SAMHSA National Helpline',
+        'phone': '1-800-662-4357',
+        'address': 'Substance Abuse & Mental Health Services',
+        'distance': 0.0,
+        'is24Hours': true,
+      },
+      {
+        'id': 'nat_vet',
+        'name': 'Veterans Crisis Line',
+        'phone': '988 (Press 1)',
+        'address': 'Department of Veterans Affairs',
+        'distance': 0.0,
         'is24Hours': true,
       },
     ];

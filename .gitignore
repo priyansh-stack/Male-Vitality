@@ -44,4 +44,15 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Firebase secrets and private configs
+**/android/app/google-services.json
+**/ios/Runner/GoogleService-Info.plist
+*.env
+*.env.*
+
+# Temporary debug artifacts
+*.png
+*.apk
+*.log
+
 

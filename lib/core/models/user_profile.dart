@@ -39,6 +39,17 @@ class UserProfile {
 
   LifeStage get lifeStage => LifeStage.calculateFromDOB(dateOfBirth);
 
+  String get fullName => displayName;
+  LifestyleFactors get lifestyleFactors => lifestyle;
+  int get age {
+    final now = DateTime.now();
+    int calculatedAge = now.year - dateOfBirth.year;
+    if (now.month < dateOfBirth.month || (now.month == dateOfBirth.month && now.day < dateOfBirth.day)) {
+      calculatedAge--;
+    }
+    return calculatedAge;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,

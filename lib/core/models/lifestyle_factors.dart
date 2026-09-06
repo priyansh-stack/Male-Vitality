@@ -80,6 +80,8 @@ class LifestyleFactors {
     this.stressLevel = 4,
   });
 
+  bool get isSmoker => smoking == SmokingStatus.daily || smoking == SmokingStatus.occasional;
+
   Map<String, dynamic> toMap() {
     return {
       'smoking': smoking.name,
