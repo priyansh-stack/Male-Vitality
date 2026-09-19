@@ -1,4 +1,4 @@
-import 'package:life_stage_health_app/core/bloc/Health_Dashboard/dashboard_bloc.dart';
+import 'dashboard_bloc.dart';
 import 'package:life_stage_health_app/core/models/health_enums.dart';
 import 'package:life_stage_health_app/core/models/health_metric.dart';
 
@@ -15,7 +15,7 @@ class MetricTrendLoaded extends DashboardState {
   });
 
   @override
-  List<Object> get props => [metrics, metricType,trendDepressed,];
+  List<Object> get props => [metrics, metricType, trendDepressed];
 }
 
 class MetricAdded extends DashboardState {
@@ -26,7 +26,6 @@ class MetricAdded extends DashboardState {
   @override
   List<Object> get props => [metric];
 }
-
 
 // For Syncing Data Classes
 class SyncInProgress extends DashboardState {
@@ -40,7 +39,7 @@ class SyncInProgress extends DashboardState {
     this.status = 'Syncing...',
   });
 
-  // @override
+  @override
   List<Object> get props => [wearableType, progress, status];
 }
 
@@ -48,10 +47,7 @@ class SyncComplete extends DashboardState {
   final int syncedCount;
   final String message;
 
-  const SyncComplete({
-    required this.syncedCount,
-    required this.message,
-  });
+  const SyncComplete({required this.syncedCount, required this.message});
 
   @override
   List<Object> get props => [syncedCount, message];
@@ -62,10 +58,7 @@ class SummaryGenerated extends DashboardState {
   final String pdfPath;
   final String summary;
 
-  const SummaryGenerated({
-    required this.pdfPath,
-    required this.summary,
-  });
+  const SummaryGenerated({required this.pdfPath, required this.summary});
 
   @override
   List<Object> get props => [pdfPath, summary];
@@ -77,10 +70,7 @@ class DashboardError extends DashboardState {
   final String message;
   final Exception? exception;
 
-  const DashboardError({
-    required this.message,
-    this.exception,
-  });
+  const DashboardError({required this.message, this.exception});
 
   @override
   List<Object> get props => [message, exception ?? ''];

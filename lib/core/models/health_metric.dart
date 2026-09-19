@@ -51,7 +51,7 @@ class HealthMetric extends Equatable {
       timeStamp: timestamp,
       source: source,
       note: note,
-      isAbnormal: bp.Category != BloodPresureCategory.normal,
+      isAbnormal: bp.category != BloodPresureCategory.normal,
       metaData: {
         'systolic': systolic,
         'diastolic': diastolic,

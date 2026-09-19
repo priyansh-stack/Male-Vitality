@@ -6,13 +6,18 @@ class RemoteMoodDataSource {
 
   RemoteMoodDataSource({required this.firestore});
 
+  CollectionReference<Map<String, dynamic>> _userMoods(String userId) {
+    return firestore
+        .collection('users')
+        .doc(userId)
+        .collection('apps')
+        .doc('male_vitality')
+        .collection('mood_entries');
+  }
+
   // Save mood entry to Firestore
   Future<MoodEntry> createMoodEntry(MoodEntry entry) async {
-    final docRef = await firestore
-        .collection('users')
-        .doc(entry.userId)
-        .collection('mood_entries')
-        .add(entry.toMap());
+    final docRef = await _userMoods(entry.userId).add(entry.toMap());
 
     return entry.copyWith(id: docRef.id);
   }
@@ -25,10 +30,7 @@ class RemoteMoodDataSource {
     final startDate = DateTime.now().subtract(Duration(days: days));
 
     try {
-      final snapshot = await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('mood_entries')
+      final snapshot = await _userMoods(userId)
           .where('timestamp', isGreaterThanOrEqualTo: startDate.toIso8601String())
           .orderBy('timestamp', descending: true)
           .get();
@@ -44,12 +46,7 @@ class RemoteMoodDataSource {
   // Get specific mood entry
   Future<MoodEntry?> getMoodEntry(String userId, String entryId) async {
     try {
-      final doc = await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('mood_entries')
-          .doc(entryId)
-          .get();
+      final doc = await _userMoods(userId).doc(entryId).get();
 
       if (doc.exists && doc.data() != null) {
         return MoodEntry.fromMap(doc.data()!);
@@ -62,24 +59,14 @@ class RemoteMoodDataSource {
 
   // Update mood entry
   Future<MoodEntry> updateMoodEntry(MoodEntry entry) async {
-    await firestore
-        .collection('users')
-        .doc(entry.userId)
-        .collection('mood_entries')
-        .doc(entry.id)
-        .update(entry.toMap());
+    await _userMoods(entry.userId).doc(entry.id).update(entry.toMap());
 
     return entry;
   }
 
   // Delete mood entry
   Future<void> deleteMoodEntry(String userId, String entryId) async {
-    await firestore
-        .collection('users')
-        .doc(userId)
-        .collection('mood_entries')
-        .doc(entryId)
-        .delete();
+    await _userMoods(userId).doc(entryId).delete();
   }
 
   // Get mood heatmap data
@@ -130,8 +117,11 @@ class RemoteMoodDataSource {
       final firstAvg = firstHalf.reduce((a, b) => a + b) / firstHalf.length;
       final secondAvg = secondHalf.reduce((a, b) => a + b) / secondHalf.length;
 
-      if (secondAvg > firstAvg + 0.5) trend = 'improving';
-      else if (secondAvg < firstAvg - 0.5) trend = 'declining';
+      if (secondAvg > firstAvg + 0.5) {
+        trend = 'improving';
+      } else if (secondAvg < firstAvg - 0.5) {
+        trend = 'declining';
+      }
     }
 
     return {
@@ -149,11 +139,7 @@ class RemoteMoodDataSource {
     final results = <MoodEntry>[];
 
     for (final entry in entries) {
-      final docRef = firestore
-          .collection('users')
-          .doc(entry.userId)
-          .collection('mood_entries')
-          .doc();
+      final docRef = _userMoods(entry.userId).doc();
       batch.set(docRef, entry.toMap());
       results.add(entry.copyWith(id: docRef.id));
     }
@@ -164,10 +150,7 @@ class RemoteMoodDataSource {
 
   // Listen to real-time mood updates
   Stream<List<MoodEntry>> watchMoodEntries(String userId) {
-    return firestore
-        .collection('users')
-        .doc(userId)
-        .collection('mood_entries')
+    return _userMoods(userId)
         .orderBy('timestamp', descending: true)
         .limit(50)
         .snapshots()

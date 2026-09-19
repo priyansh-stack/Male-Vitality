@@ -9,7 +9,7 @@ class FirebaseScreeningRepository implements IScreeningRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _userScreenings(String userId) {
-    return _firestore.collection('users').doc(userId).collection('screenings');
+    return _firestore.collection('users').doc(userId).collection('apps').doc('male_vitality').collection('screenings');
   }
 
   @override
@@ -41,7 +41,7 @@ class FirebaseScreeningRepository implements IScreeningRepository {
       'isCompleted': true,
       'completedDate': completedDate.toIso8601String(),
       'resultNotes': notes,
-      'documentUrl': ?documentUrl,
+      'documentUrl': documentUrl,
     });
   }
 

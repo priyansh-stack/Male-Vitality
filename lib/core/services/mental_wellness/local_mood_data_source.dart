@@ -20,7 +20,7 @@ class LocalMoodDataSource {
 
   // Get all mood entries for a user
   Future<List<MoodEntry>> getMoodEntries(String userId) async {
-    final key = '$_moodEntriesKey\_$userId';
+    final key = '${_moodEntriesKey}_$userId';
     final data = prefs.getString(key);
     if (data == null) return [];
     
@@ -53,13 +53,13 @@ class LocalMoodDataSource {
 
   // Cache the latest mood
   Future<void> cacheLatestMood(String userId, MoodEntry entry) async {
-    final key = '$_cachedMoodKey\_$userId';
+    final key = '${_cachedMoodKey}_$userId';
     await prefs.setString(key, jsonEncode(entry.toMap()));
   }
 
   // Get cached mood
   Future<MoodEntry?> getCachedMood(String userId) async {
-    final key = '$_cachedMoodKey\_$userId';
+    final key = '${_cachedMoodKey}_$userId';
     final data = prefs.getString(key);
     if (data == null) return null;
     return MoodEntry.fromMap(jsonDecode(data));
@@ -67,14 +67,14 @@ class LocalMoodDataSource {
 
   // Clear all data for a user
   Future<void> clearUserData(String userId) async {
-    final key = '$_moodEntriesKey\_$userId';
+    final key = '${_moodEntriesKey}_$userId';
     await prefs.remove(key);
-    await prefs.remove('$_cachedMoodKey\_$userId');
+    await prefs.remove('${_cachedMoodKey}_$userId');
   }
 
   // Private helper to save entries
   Future<void> _saveEntries(String userId, List<MoodEntry> entries) async {
-    final key = '$_moodEntriesKey\_$userId';
+    final key = '${_moodEntriesKey}_$userId';
     final data = jsonEncode(entries.map((e) => e.toMap()).toList());
     await prefs.setString(key, data);
   }
@@ -104,8 +104,11 @@ class LocalMoodDataSource {
       final last = entries.skip(entries.length - 3).map((e) => e.moodRating).toList();
       final firstAvg = first.reduce((a, b) => a + b) / first.length;
       final lastAvg = last.reduce((a, b) => a + b) / last.length;
-      if (lastAvg > firstAvg + 0.5) trend = 'improving';
-      else if (lastAvg < firstAvg - 0.5) trend = 'declining';
+      if (lastAvg > firstAvg + 0.5) {
+        trend = 'improving';
+      } else if (lastAvg < firstAvg - 0.5) {
+        trend = 'declining';
+      }
     }
 
     return {

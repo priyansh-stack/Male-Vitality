@@ -25,13 +25,19 @@ class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
     required this.prefs,
   });
 
+  DocumentReference<Map<String, dynamic>> _maleVitality(String userId) {
+    return firestore
+        .collection('users')
+        .doc(userId)
+        .collection('apps')
+        .doc('male_vitality');
+  }
+
   // ========== MOOD TRACKING ==========
 
   @override
   Future<MoodEntry> createMoodEntry(MoodEntry entry) async {
-    final docRef = await firestore
-        .collection('users')
-        .doc(entry.userId)
+    final docRef = await _maleVitality(entry.userId)
         .collection('mood_entries')
         .add(entry.toMap());
 
@@ -45,9 +51,7 @@ class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
     final startDate = DateTime.now().subtract(Duration(days: days));
 
     try {
-      final snapshot = await firestore
-          .collection('users')
-          .doc(userId)
+      final snapshot = await _maleVitality(userId)
           .collection('mood_entries')
           .where('timestamp', isGreaterThanOrEqualTo: startDate.toIso8601String())
           .orderBy('timestamp', descending: true)
@@ -106,9 +110,7 @@ class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
   @override
   Future<List<RiskAlert>> getRiskHistory(String userId) async {
     try {
-      final snapshot = await firestore
-          .collection('users')
-          .doc(userId)
+      final snapshot = await _maleVitality(userId)
           .collection('risk_alerts')
           .orderBy('detectedAt', descending: true)
           .get();
@@ -202,9 +204,7 @@ class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
 
   @override
   Future<void> trackExerciseProgress(String userId, ExerciseProgress progress) async {
-    await firestore
-        .collection('users')
-        .doc(userId)
+    await _maleVitality(userId)
         .collection('exercise_progress')
         .doc('${progress.exerciseId}_${progress.userId}')
         .set(progress.toMap());
@@ -343,9 +343,7 @@ class MentalWellnessRepositoryImpl implements MentalWellnessRepository {
       detectedAt: DateTime.now(),
     );
 
-    await firestore
-        .collection('users')
-        .doc(userId)
+    await _maleVitality(userId)
         .collection('emergency_alerts')
         .add(alert.toMap());
 

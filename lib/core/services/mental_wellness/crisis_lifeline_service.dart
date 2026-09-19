@@ -77,6 +77,15 @@ class CrisisLifelineService {
     ];
   }
 
+  CollectionReference<Map<String, dynamic>> _userCrisisLogs(String userId) {
+    return firestore
+        .collection('users')
+        .doc(userId)
+        .collection('apps')
+        .doc('male_vitality')
+        .collection('crisis_logs');
+  }
+
   // Log crisis contact
   Future<void> logCrisisContact({
     required String userId,
@@ -84,7 +93,7 @@ class CrisisLifelineService {
     String? serviceName,
     String? notes,
   }) async {
-    await firestore.collection('users').doc(userId).collection('crisis_logs').add({
+    await _userCrisisLogs(userId).add({
       'userId': userId,
       'type': type,
       'serviceName': serviceName,
@@ -97,10 +106,7 @@ class CrisisLifelineService {
   // Get crisis contact history
   Future<List<Map<String, dynamic>>> getCrisisHistory(String userId) async {
     try {
-      final snapshot = await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('crisis_logs')
+      final snapshot = await _userCrisisLogs(userId)
           .orderBy('timestamp', descending: true)
           .limit(20)
           .get();
@@ -122,10 +128,7 @@ class CrisisLifelineService {
   Future<bool> hasRecentCrisisContact(String userId, {Duration within = const Duration(days: 30)}) async {
     try {
       final cutoff = DateTime.now().subtract(within);
-      final snapshot = await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('crisis_logs')
+      final snapshot = await _userCrisisLogs(userId)
           .where('date', isGreaterThanOrEqualTo: cutoff.toIso8601String())
           .limit(1)
           .get();

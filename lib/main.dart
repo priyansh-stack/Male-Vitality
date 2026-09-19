@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -103,11 +104,43 @@ void main() async {
   // ===== INITIALIZE SERVICE LOCATOR =====
   ServiceLocator.initialize();
 
+  final prefs = await SharedPreferences.getInstance();
+
   // ===== MENTAL WELLNESS REPOSITORY =====
   final mentalWellnessRepository = MentalWellnessRepositoryImpl(
     firestore: firestore,
-    prefs: await SharedPreferences.getInstance(),
+    prefs: prefs,
   );
+
+  // Fast Zero-Flicker Route Resolution on App Reopen/Cold-Boot
+  String initialLocation = '/';
+  final firebaseUser = FirebaseAuth.instance.currentUser;
+  if (firebaseUser != null) {
+    final uid = firebaseUser.uid;
+    final overrideRoute = prefs.getString('override_route');
+    if (overrideRoute != null && overrideRoute.isNotEmpty) {
+      initialLocation = overrideRoute;
+    } else {
+      try {
+        final isOnboarded = await firestoreService.isMaleVitalityOnboarded(uid);
+        if (isOnboarded) {
+          await prefs.setBool('onboarding_completed_$uid', true);
+          await prefs.setBool('onboarding_completed_global', true);
+          initialLocation = '/dashboard?userId=$uid';
+        } else {
+          // Not onboarded in apps/male_vitality (new app user or reset)
+          await prefs.remove('onboarding_completed_$uid');
+          await prefs.remove('onboarding_completed_global');
+          initialLocation = '/onboarding/personal-info';
+        }
+      } catch (_) {
+        final isLocallyComplete = prefs.getBool('onboarding_completed_$uid') ?? false;
+        initialLocation = isLocallyComplete ? '/dashboard?userId=$uid' : '/onboarding/personal-info';
+      }
+    }
+  }
+
+  AppRouter.initRouter(initialLocation: initialLocation);
 
   runApp(
     MultiProvider(
@@ -288,7 +321,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Male Vitality - Health Companion',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
+      theme: AppTheme.futuristicDarkTheme,
+      darkTheme: AppTheme.futuristicDarkTheme,
+      themeMode: ThemeMode.dark,
       routerConfig: AppRouter.router,
     );
   }

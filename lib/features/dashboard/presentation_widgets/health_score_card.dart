@@ -8,18 +8,18 @@ class HealthScoreCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const HealthScoreCard({
-    Key? key,
+    super.key,
     required this.healthScore,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _getStatusColor(healthScore.score);
+
     return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceWhite,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.borderLight),
+      decoration: AppTheme.cyberCardDecoration(
+        borderColor: statusColor.withOpacity(0.35),
       ),
       child: InkWell(
         onTap: onTap,
@@ -32,40 +32,63 @@ class HealthScoreCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Overall Vitality',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textDark,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: statusColor.withOpacity(0.5),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'DAILY VITALITY INDEX',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.cyberCyan,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
                   ),
-                  Icon(Icons.info_outline, size: 20, color: AppTheme.textMuted),
+                  const Icon(Icons.info_outline, size: 18, color: AppTheme.textMuted),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Row(
                 children: [
-                  _buildScoreCircle(context),
-                  const SizedBox(width: 24),
+                  _buildScoreCircle(context, statusColor),
+                  const SizedBox(width: 20),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          healthScore.status.displayname,
+                          healthScore.status.displayname.toUpperCase(),
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: _getStatusColor(healthScore.score),
+                            color: statusColor,
+                            letterSpacing: 0.8,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'Based on ${healthScore.categoryScores.length} health metrics',
-                          style: const TextStyle(
-                            color: AppTheme.textMedium,
-                            fontSize: 13,
+                        const Text(
+                          'Calibrated from comprehensive male vitality & biometric streams',
+                          style: TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                            height: 1.3,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -73,7 +96,7 @@ class HealthScoreCard extends StatelessWidget {
                           spacing: 6,
                           runSpacing: 6,
                           children: healthScore.categoryScores.entries
-                              .take(3)
+                              .take(4)
                               .map((entry) => _buildCategoryChip(entry))
                               .toList(),
                         ),
@@ -82,21 +105,31 @@ class HealthScoreCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              if (healthScore.recommendations.isNotEmpty)
+              if (healthScore.recommendations.isNotEmpty) ...[
+                const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceSubtle,
-                    borderRadius: BorderRadius.circular(16),
+                    color: AppTheme.darkSurface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppTheme.cyberCyan.withOpacity(0.25),
+                    ),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.lightbulb_outline,
-                        color: AppTheme.primaryTeal,
-                        size: 20,
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.cyberCyan.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.favorite_rounded,
+                          color: AppTheme.cyberCyan,
+                          size: 16,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -104,17 +137,22 @@ class HealthScoreCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'AI Insight',
+                              'CLINICAL HEALTH SUMMARY',
                               style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryTeal,
-                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.cyberCyan,
+                                fontSize: 11,
+                                letterSpacing: 0.8,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               healthScore.recommendations.first,
-                              style: const TextStyle(fontSize: 13, color: AppTheme.textDark, height: 1.4),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                                height: 1.4,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -124,6 +162,7 @@ class HealthScoreCard extends StatelessWidget {
                     ],
                   ),
                 ),
+              ],
             ],
           ),
         ),
@@ -131,22 +170,35 @@ class HealthScoreCard extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreCircle(BuildContext context) {
+  Widget _buildScoreCircle(BuildContext context, Color statusColor) {
     final score = healthScore.score;
-    final color = _getStatusColor(score);
 
-    return SizedBox(
-      width: 85,
-      height: 85,
+    return Container(
+      width: 90,
+      height: 90,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.2),
+            blurRadius: 18,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          CircularProgressIndicator(
-            value: score / 100,
-            strokeWidth: 8,
-            backgroundColor: AppTheme.surfaceSubtle,
-            color: color,
-            strokeCap: StrokeCap.round,
+          SizedBox(
+            width: 86,
+            height: 86,
+            child: CircularProgressIndicator(
+              value: score / 100,
+              strokeWidth: 8,
+              backgroundColor: AppTheme.darkBorder,
+              color: statusColor,
+              strokeCap: StrokeCap.round,
+            ),
           ),
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -154,10 +206,20 @@ class HealthScoreCard extends StatelessWidget {
               Text(
                 '$score',
                 style: const TextStyle(
-                  fontSize: 26,
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
-                  color: AppTheme.textDark,
+                  color: Colors.white,
                   height: 1.0,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'VITALITY',
+                style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                  letterSpacing: 1.0,
                 ),
               ),
             ],
@@ -169,23 +231,33 @@ class HealthScoreCard extends StatelessWidget {
 
   Widget _buildCategoryChip(MapEntry<HealthCategory, int> entry) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceWhite,
-        border: Border.all(color: AppTheme.borderLight),
+        color: AppTheme.darkSurface,
+        border: Border.all(color: AppTheme.darkBorder),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        '${_getCategoryShortName(entry.key)}: ${entry.value}',
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textMedium),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _getCategoryShortName(entry.key),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '${entry.value}',
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.cyberCyan),
+          ),
+        ],
       ),
     );
   }
 
   Color _getStatusColor(int score) {
-    if (score >= 80) return AppTheme.healthyGreen;
-    if (score >= 60) return AppTheme.warningOrange;
-    return AppTheme.dangerRed;
+    if (score >= 80) return AppTheme.bioEmerald;
+    if (score >= 60) return AppTheme.neonAmber;
+    return AppTheme.cyberCyan;
   }
 
   String _getCategoryShortName(HealthCategory category) {
@@ -194,9 +266,9 @@ class HealthScoreCard extends StatelessWidget {
       case HealthCategory.sleep: return 'Sleep';
       case HealthCategory.nutrition: return 'Nutrition';
       case HealthCategory.screening: return 'Screening';
-      case HealthCategory.mental: return 'Mental';
+      case HealthCategory.mental: return 'Mind';
       case HealthCategory.cardioVascular: return 'Cardio';
       case HealthCategory.metabolic: return 'Metabolic';
     }
   }
-}
+}

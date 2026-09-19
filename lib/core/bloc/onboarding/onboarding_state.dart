@@ -21,11 +21,20 @@ class OnboardingState extends Equatable {
   bool get isOnboardingComplete => completedProfile != null;
   LifeStage get detectedLifeStage => LifeStage.calculateFromDOB(dateOfBirth);
 
+  int get age {
+    final now = DateTime.now();
+    int calculatedAge = now.year - dateOfBirth.year;
+    if (now.month < dateOfBirth.month || (now.month == dateOfBirth.month && now.day < dateOfBirth.day)) {
+      calculatedAge--;
+    }
+    return calculatedAge;
+  }
+
   OnboardingState({
     this.step = 0,
     this.displayName = '',
     DateTime? dateOfBirth,
-    this.gender = 'Female',
+    this.gender = 'Male',
     this.selectedConditions = const [],
     this.medications = const [],
     LifestyleFactors? lifestyle,

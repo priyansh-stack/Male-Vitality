@@ -84,33 +84,54 @@ class ClinicalEngine {
         bpCount++;
         final bp = metric.value as Bloodpressure;
         // Systolic
-        if (bp.systolic >= 180) score -= 15;
-        else if (bp.systolic >= 140) score -= 10;
-        else if (bp.systolic >= 130) score -= 5;
-        else if (bp.systolic >= 120) score -= 2;
+        if (bp.systolic >= 180) {
+          score -= 15;
+        } else if (bp.systolic >= 140) {
+          score -= 10;
+        } else if (bp.systolic >= 130) {
+          score -= 5;
+        } else if (bp.systolic >= 120) {
+          score -= 2;
+        }
         // Diastolic
-        if (bp.diastolic >= 120) score -= 15;
-        else if (bp.diastolic >= 90) score -= 10;
-        else if (bp.diastolic >= 85) score -= 5;
-        else if (bp.diastolic >= 80) score -= 2;
+        if (bp.diastolic >= 120) {
+          score -= 15;
+        } else if (bp.diastolic >= 90) {
+          score -= 10;
+        } else if (bp.diastolic >= 85) {
+          score -= 5;
+        } else if (bp.diastolic >= 80) {
+          score -= 2;
+        }
       } else if (metric.type == MetricType.heartRate) {
         hrCount++;
         final hr = metric.value as int;
-        if (hr > 120 || hr < 40) score -= 10;
-        else if (hr > 100 || hr < 50) score -= 5;
-        else if (hr > 90 || hr < 55) score -= 2;
+        if (hr > 120 || hr < 40) {
+          score -= 10;
+        } else if (hr > 100 || hr < 50) {
+          score -= 5;
+        } else if (hr > 90 || hr < 55) {
+          score -= 2;
+        }
       } else if (metric.type == MetricType.glucose) {
         glucoseCount++;
         final glucose = metric.value as double;
-        if (glucose > 180 || glucose < 55) score -= 15;
-        else if (glucose > 140 || glucose < 65) score -= 10;
-        else if (glucose > 125 || glucose < 70) score -= 5;
+        if (glucose > 180 || glucose < 55) {
+          score -= 15;
+        } else if (glucose > 140 || glucose < 65) {
+          score -= 10;
+        } else if (glucose > 125 || glucose < 70) {
+          score -= 5;
+        }
       } else if (metric.type == MetricType.weight) {
         weightCount++;
         final weight = metric.value as double;
         // Very rough weight scoring (would need BMI with height)
-        if (weight > 150 || weight < 35) score -= 10;
-        else if (weight > 120 || weight < 45) score -= 5;
+        if (weight > 150 || weight < 35) {
+          score -= 10;
+        } else if (weight > 120 || weight < 45) {
+          score -= 5;
+        }
       }
     }
 
@@ -134,11 +155,17 @@ class ClinicalEngine {
         .map((m) => m.moodRating)
         .reduce((a, b) => a + b) / recentMoods.length;
 
-    if (avgMood <= 2) score -= 25;
-    else if (avgMood <= 3) score -= 20;
-    else if (avgMood <= 4) score -= 15;
-    else if (avgMood <= 5) score -= 10;
-    else if (avgMood <= 6) score -= 5;
+    if (avgMood <= 2) {
+      score -= 25;
+    } else if (avgMood <= 3) {
+      score -= 20;
+    } else if (avgMood <= 4) {
+      score -= 15;
+    } else if (avgMood <= 5) {
+      score -= 10;
+    } else if (avgMood <= 6) {
+      score -= 5;
+    }
 
     // PHQ-2 (Depression) scores
     final phq2Scores = recentMoods
@@ -148,8 +175,11 @@ class ClinicalEngine {
 
     if (phq2Scores.isNotEmpty) {
       final avgPhq2 = phq2Scores.reduce((a, b) => a + b) / phq2Scores.length;
-      if (avgPhq2 >= 3) score -= 20;
-      else if (avgPhq2 >= 2) score -= 10;
+      if (avgPhq2 >= 3) {
+        score -= 20;
+      } else if (avgPhq2 >= 2) {
+        score -= 10;
+      }
     }
 
     // GAD-2 (Anxiety) scores
@@ -160,8 +190,11 @@ class ClinicalEngine {
 
     if (gad2Scores.isNotEmpty) {
       final avgGad2 = gad2Scores.reduce((a, b) => a + b) / gad2Scores.length;
-      if (avgGad2 >= 3) score -= 20;
-      else if (avgGad2 >= 2) score -= 10;
+      if (avgGad2 >= 3) {
+        score -= 20;
+      } else if (avgGad2 >= 2) {
+        score -= 10;
+      }
     }
 
     // Check for trigger patterns
@@ -169,8 +202,11 @@ class ClinicalEngine {
         .map((m) => m.triggers.length)
         .reduce((a, b) => a + b);
     
-    if (triggerCount > 15) score -= 10;
-    else if (triggerCount > 10) score -= 5;
+    if (triggerCount > 15) {
+      score -= 10;
+    } else if (triggerCount > 10) {
+      score -= 5;
+    }
 
     return score.clamp(0, 100);
   }
@@ -184,10 +220,15 @@ class ClinicalEngine {
     int score = 100;
     final lastSleep = sleepMetrics.first.value as double;
 
-    if (lastSleep < 4 || lastSleep > 11) score -= 30;
-    else if (lastSleep < 5 || lastSleep > 10) score -= 20;
-    else if (lastSleep < 6 || lastSleep > 9) score -= 10;
-    else if (lastSleep < 7 || lastSleep > 8) score -= 5;
+    if (lastSleep < 4 || lastSleep > 11) {
+      score -= 30;
+    } else if (lastSleep < 5 || lastSleep > 10) {
+      score -= 20;
+    } else if (lastSleep < 6 || lastSleep > 9) {
+      score -= 10;
+    } else if (lastSleep < 7 || lastSleep > 8) {
+      score -= 5;
+    }
 
     return score.clamp(0, 100);
   }
@@ -205,16 +246,24 @@ class ClinicalEngine {
 
     // Steps scoring
     if (steps > 0) {
-      if (steps >= 10000) score += 10;
-      else if (steps >= 7500) score += 5;
-      else if (steps < 3000) score -= 15;
-      else if (steps < 5000) score -= 10;
+      if (steps >= 10000) {
+        score += 10;
+      } else if (steps >= 7500) {
+        score += 5;
+      } else if (steps < 3000) {
+        score -= 15;
+      } else if (steps < 5000) {
+        score -= 10;
+      }
     }
 
     // Calories scoring (rough estimate)
     if (calories > 0) {
-      if (calories >= 500) score += 5;
-      else if (calories < 200) score -= 5;
+      if (calories >= 500) {
+        score += 5;
+      } else if (calories < 200) {
+        score -= 5;
+      }
     }
 
     return score.clamp(0, 100);
@@ -504,8 +553,11 @@ class ClinicalEngine {
       final firstAvg = firstHalf.reduce((a, b) => a + b) / firstHalf.length;
       final secondAvg = secondHalf.reduce((a, b) => a + b) / secondHalf.length;
       
-      if (secondAvg > firstAvg + 1.0) trend = 'improving';
-      else if (secondAvg < firstAvg - 1.0) trend = 'declining';
+      if (secondAvg > firstAvg + 1.0) {
+        trend = 'improving';
+      } else if (secondAvg < firstAvg - 1.0) {
+        trend = 'declining';
+      }
     }
 
     // Risk level

@@ -96,7 +96,7 @@ class MoodRatingSelector extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Selected: ${selectedRating} - ${_getMoodLabel(selectedRating!)}',
+                  'Selected: $selectedRating - ${_getMoodLabel(selectedRating!)}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: _getMoodColor(selectedRating!),

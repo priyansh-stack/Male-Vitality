@@ -9,7 +9,12 @@ class FirebaseMedicationRepository implements IMedicationRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _userMeds(String userId) {
-    return _firestore.collection('users').doc(userId).collection('medications');
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('apps')
+        .doc('male_vitality')
+        .collection('medications');
   }
 
   @override

@@ -33,20 +33,28 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: AppTheme.obsidianBase,
       appBar: AppBar(
-        title: const Text('Crisis Resources'),
-        backgroundColor: Colors.red.shade50,
+        title: const Text(
+          'CRISIS RESOURCES & SENTINEL',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 15,
+            letterSpacing: 1.2,
+          ),
+        ),
+        backgroundColor: AppTheme.obsidianBase,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: _goBack,
         ),
       ),
       body: BlocBuilder<CrisisResourceBloc, CrisisResourceState>(
         builder: (context, state) {
           if (state is CrisisLoadingState) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(color: AppTheme.neonCyan));
           }
 
           if (state is CrisisErrorState) {
@@ -54,20 +62,22 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const Icon(Icons.error_outline, size: 48, color: AppTheme.neonRed),
                   const SizedBox(height: 16),
-                  Text(state.message),
+                  Text(state.message, style: const TextStyle(color: Colors.white70)),
                   const SizedBox(height: 16),
                   ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.neonCyan, foregroundColor: const Color(0xFF080C14)),
                     onPressed: () {
                       context.read<CrisisResourceBloc>().add(
                         const LoadCrisisResourcesEvent(),
                       );
                     },
-                    child: const Text('Retry'),
+                    child: const Text('Retry', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton(
+                    style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: const BorderSide(color: Colors.white24)),
                     onPressed: _goBack,
                     child: const Text('Go Back'),
                   ),
@@ -98,7 +108,7 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
             );
           }
 
-          return const Center(child: Text('No crisis resources available'));
+          return const Center(child: Text('No crisis resources available', style: TextStyle(color: Colors.white70)));
         },
       ),
     );
@@ -211,8 +221,13 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Quick Access',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          'RAPID TRIAGE DISPATCH',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            color: AppTheme.neonCyan,
+            letterSpacing: 1.2,
+          ),
         ),
         const SizedBox(height: 12),
         Row(
@@ -220,9 +235,9 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
             Expanded(
               child: CrisisQuickAccessButton(
                 title: '988 Lifeline',
-                subtitle: 'Call Now',
+                subtitle: 'Direct Voice',
                 icon: Icons.phone,
-                color: Colors.red,
+                color: Colors.redAccent,
                 onTap: () {
                   context.read<CrisisResourceBloc>().add(
                     const CallCrisisLifelineEvent(phoneNumber: '988'),
@@ -234,9 +249,9 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
             Expanded(
               child: CrisisQuickAccessButton(
                 title: 'Crisis Text',
-                subtitle: 'Text HOME',
+                subtitle: 'SMS HOME',
                 icon: Icons.sms,
-                color: Colors.blue,
+                color: AppTheme.neonCyan,
                 onTap: () {
                   context.read<CrisisResourceBloc>().add(
                     const SendCrisisTextEvent(textNumber: '741741'),
@@ -253,8 +268,8 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
               child: CrisisQuickAccessButton(
                 title: 'SAMHSA',
                 subtitle: '1-800-662-4357',
-                icon: Icons.help,
-                color: Colors.purple,
+                icon: Icons.support_agent,
+                color: const Color(0xFFA855F7),
                 onTap: () {
                   context.read<CrisisResourceBloc>().add(
                     const CallCrisisLifelineEvent(phoneNumber: '1-800-662-4357'),
@@ -265,10 +280,10 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
             const SizedBox(width: 12),
             Expanded(
               child: CrisisQuickAccessButton(
-                title: '911',
-                subtitle: 'Emergency',
+                title: 'Emergency',
+                subtitle: 'Dial 911',
                 icon: Icons.emergency,
-                color: Colors.orange,
+                color: Colors.orangeAccent,
                 onTap: () {
                   context.read<CrisisResourceBloc>().add(
                     const CallCrisisLifelineEvent(phoneNumber: '911'),
@@ -289,8 +304,13 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'National Hotlines',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          'NATIONAL 24/7 SUPPORT SERVICES',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.1,
+          ),
         ),
         const SizedBox(height: 12),
         ...resources.map((resource) => _buildResourceCard(resource)),
@@ -305,8 +325,13 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Local Resources',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          'LOCAL CRISIS CLINICS & WARMLINES',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.1,
+          ),
         ),
         const SizedBox(height: 12),
         ...resources.map((resource) => _buildResourceCard(resource)),
@@ -315,128 +340,137 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
   }
 
   Widget _buildResourceCard(CrisisResource resource) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _getResourceColor(resource.type).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _getResourceIcon(resource.type),
-                    color: _getResourceColor(resource.type),
-                    size: 24,
-                  ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _getResourceColor(resource.type).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        resource.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                child: Icon(
+                  _getResourceIcon(resource.type),
+                  color: _getResourceColor(resource.type),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      resource.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (resource.isNational)
+                      Container(
+                        margin: const EdgeInsets.only(top: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.neonCyan.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'NATIONAL',
+                          style: TextStyle(fontSize: 9, color: AppTheme.neonCyan, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      if (resource.isNational)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'National',
-                            style: TextStyle(fontSize: 10, color: Colors.blue),
-                          ),
-                        ),
-                    ],
+                  ],
+                ),
+              ),
+              if (resource.is24Hours)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    '24/7 LIVE',
+                    style: TextStyle(fontSize: 10, color: Color(0xFF10B981), fontWeight: FontWeight.w900),
                   ),
                 ),
-                if (resource.is24Hours)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.healthyGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      '24/7',
-                      style: TextStyle(fontSize: 10, color: AppTheme.healthyGreen),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              resource.description,
-              style: const TextStyle(fontSize: 14, color: AppTheme.textMedium),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (resource.phoneNumber != null)
-                  _buildActionChip(
-                    icon: Icons.phone,
-                    label: resource.phoneNumber!,
-                    onTap: () {
-                      context.read<CrisisResourceBloc>().add(
-                        CallCrisisLifelineEvent(
-                          phoneNumber: resource.phoneNumber!,
-                        ),
-                      );
-                    },
-                  ),
-                if (resource.textNumber != null)
-                  _buildActionChip(
-                    icon: Icons.sms,
-                    label: 'Text ${resource.textNumber}',
-                    onTap: () {
-                      context.read<CrisisResourceBloc>().add(
-                        SendCrisisTextEvent(
-                          textNumber: resource.textNumber!,
-                        ),
-                      );
-                    },
-                  ),
-                if (resource.website != null)
-                  _buildActionChip(
-                    icon: Icons.language,
-                    label: 'Website',
-                    onTap: () async {
-                      final url = resource.website!;
-                      if (await canLaunch(url)) {
-                        await launch(url);
-                      }
-                    },
-                  ),
-                if (resource.chatUrl != null)
-                  _buildActionChip(
-                    icon: Icons.chat,
-                    label: 'Chat',
-                    onTap: () async {
-                      final url = resource.chatUrl!;
-                      if (await canLaunch(url)) {
-                        await launch(url);
-                      }
-                    },
-                  ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            resource.description,
+            style: const TextStyle(fontSize: 13, color: Colors.white70, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (resource.phoneNumber != null)
+                _buildActionChip(
+                  icon: Icons.phone,
+                  label: resource.phoneNumber!,
+                  color: const Color(0xFF10B981),
+                  onTap: () {
+                    context.read<CrisisResourceBloc>().add(
+                      CallCrisisLifelineEvent(
+                        phoneNumber: resource.phoneNumber!,
+                      ),
+                    );
+                  },
+                ),
+              if (resource.textNumber != null)
+                _buildActionChip(
+                  icon: Icons.sms,
+                  label: 'Text ${resource.textNumber}',
+                  color: AppTheme.neonCyan,
+                  onTap: () {
+                    context.read<CrisisResourceBloc>().add(
+                      SendCrisisTextEvent(
+                        textNumber: resource.textNumber!,
+                      ),
+                    );
+                  },
+                ),
+              if (resource.website != null)
+                _buildActionChip(
+                  icon: Icons.language,
+                  label: 'Website',
+                  color: const Color(0xFFA855F7),
+                  onTap: () async {
+                    final uri = Uri.parse(resource.website!);
+                    try {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } catch (_) {}
+                  },
+                ),
+              if (resource.chatUrl != null)
+                _buildActionChip(
+                  icon: Icons.chat,
+                  label: 'Chat Room',
+                  color: const Color(0xFF38BDF8),
+                  onTap: () async {
+                    final uri = Uri.parse(resource.chatUrl!);
+                    try {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } catch (_) {}
+                  },
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -445,12 +479,30 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    Color color = Colors.white,
   }) {
-    return ActionChip(
-      avatar: Icon(icon, size: 16),
-      label: Text(label),
-      onPressed: onTap,
-      backgroundColor: AppTheme.surfaceSubtle,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -461,30 +513,43 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Local Emergency Services',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          'LOCAL EMERGENCY DEPARTMENTS',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.1),
         ),
         const SizedBox(height: 12),
-        ...services.map((service) => Card(
+        ...services.map((service) => Container(
               margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white12),
+              ),
               child: ListTile(
-                leading: const Icon(Icons.local_hospital, color: Colors.red),
-                title: Text(service.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.local_hospital, color: Colors.redAccent, size: 20),
+                ),
+                title: Text(service.name, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14)),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (service.address != null) Text(service.address!),
+                    if (service.address != null)
+                      Text(service.address!, style: const TextStyle(color: Colors.white60, fontSize: 12)),
                     if (service.is24Hours)
-                      const Text('Open 24/7', style: TextStyle(color: Colors.green)),
+                      const Text('Open 24/7 Emergency Room', style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
                     if (service.services.isNotEmpty)
                       Text(
                         service.services.join(', '),
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 11, color: Colors.white38),
                       ),
                   ],
                 ),
                 trailing: IconButton(
-                  icon: const Icon(Icons.phone, color: Colors.blue),
+                  icon: const Icon(Icons.phone, color: Color(0xFF10B981)),
                   onPressed: () {
                     context.read<CrisisResourceBloc>().add(
                       CallCrisisLifelineEvent(
@@ -500,54 +565,65 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
   }
 
   Widget _buildSafetyPlanSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Create Your Safety Plan',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'A safety plan helps you identify warning signs and coping strategies during crisis moments.',
-              style: TextStyle(color: AppTheme.textMedium),
-            ),
-            const SizedBox(height: 16),
-            const SizedBox(
-              height: 120,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _SafetyPlanItem(
-                    icon: Icons.warning,
-                    text: 'Identify warning signs',
-                  ),
-                  _SafetyPlanItem(
-                    icon: Icons.people,
-                    text: 'Support contacts',
-                  ),
-                  _SafetyPlanItem(
-                    icon: Icons.settings,
-                    text: 'Coping strategies',
-                  ),
-                ],
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.neonCyan.withValues(alpha: 0.3)),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.shield_rounded, color: AppTheme.neonCyan, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'PERSONAL CRISIS RESILIENCE PLAN',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.8),
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  // Navigate to safety plan
-                },
-                child: const Text('View My Safety Plan'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Pre-commit to immediate grounding protocols and trusted anchors before acute psychological distress occurs.',
+            style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          const Column(
+            children: [
+              _SafetyPlanItem(
+                icon: Icons.warning_amber_rounded,
+                text: '1. Recognize Personal Somatic Warning Triggers',
               ),
+              SizedBox(height: 8),
+              _SafetyPlanItem(
+                icon: Icons.self_improvement_rounded,
+                text: '2. Execute 4-4-4-4 Autonomic Box Breathing Reset',
+              ),
+              SizedBox(height: 8),
+              _SafetyPlanItem(
+                icon: Icons.people_outline_rounded,
+                text: '3. Contact Designated Primary Anchor Contact',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.neonCyan,
+                side: const BorderSide(color: AppTheme.neonCyan),
+              ),
+              onPressed: () {
+                context.go('/wellness?userId=${widget.userId}');
+              },
+              child: const Text('Access Mental Wellness Module'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -558,34 +634,44 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Colors.redAccent, width: 1.5),
+          ),
           title: const Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.red),
-              SizedBox(width: 12),
-              Text('Emergency Protocol'),
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              SizedBox(width: 10),
+              Text('Emergency Protocol', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
           content: const Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('If you are in immediate danger:'),
+              Text('If you are in immediate danger or experiencing self-harm urges:', style: TextStyle(color: Colors.white70, fontSize: 13)),
               SizedBox(height: 12),
-              Text('1. Call 988 or 911 immediately'),
-              Text('2. Contact your emergency contact'),
-              Text('3. Go to the nearest emergency room'),
-              SizedBox(height: 12),
+              Text('1. Call 988 or 911 immediately', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              Text('2. Connect with your emergency contact anchor', style: TextStyle(color: Colors.white)),
+              Text('3. Proceed to the nearest emergency department', style: TextStyle(color: Colors.white)),
+              SizedBox(height: 14),
               Text(
-                'Resources:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                'Active Lifelines:',
+                style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.neonCyan, fontSize: 12),
               ),
-              Text('• 988 Suicide & Crisis Lifeline'),
-              Text('• Crisis Text Line: 741741'),
-              Text('• SAMHSA: 1-800-662-4357'),
+              SizedBox(height: 4),
+              Text('• 988 Suicide & Crisis Lifeline (24/7, Free, Confidential)', style: TextStyle(color: Colors.white70, fontSize: 11)),
+              Text('• Crisis Text Line: Text HOME to 741741', style: TextStyle(color: Colors.white70, fontSize: 11)),
+              Text('• SAMHSA Helpline: 1-800-662-4357', style: TextStyle(color: Colors.white70, fontSize: 11)),
             ],
           ),
           actions: [
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () => Navigator.pop(context),
               child: const Text('I Understand'),
             ),
@@ -598,19 +684,19 @@ class _CrisisResourceAccessScreenState extends State<CrisisResourceAccessScreen>
   Color _getResourceColor(CrisisResourceType type) {
     switch (type) {
       case CrisisResourceType.nationalHotline:
-        return Colors.blue;
+        return AppTheme.neonCyan;
       case CrisisResourceType.localHotline:
-        return Colors.green;
+        return const Color(0xFF10B981);
       case CrisisResourceType.emergencyService:
-        return Colors.red;
+        return Colors.redAccent;
       case CrisisResourceType.crisisCenter:
-        return Colors.purple;
+        return const Color(0xFFA855F7);
       case CrisisResourceType.warmLine:
-        return Colors.orange;
+        return Colors.orangeAccent;
       case CrisisResourceType.textLine:
-        return Colors.teal;
+        return const Color(0xFF38BDF8);
       case CrisisResourceType.onlineChat:
-        return Colors.indigo;
+        return const Color(0xFF6366F1);
     }
   }
 
@@ -644,9 +730,14 @@ class _SafetyPlanItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: AppTheme.primaryTeal),
-        const SizedBox(width: 12),
-        Text(text),
+        Icon(icon, size: 18, color: AppTheme.neonCyan),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ),
       ],
     );
   }

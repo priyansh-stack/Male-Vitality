@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/audit_c_assessment.dart';
 import '../../domain/repositories/i_substance_repository.dart';
 
@@ -33,11 +34,13 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
     setState(() => _isLoading = true);
     final a = await widget.repository.getLatestAssessment(widget.userId);
     final g = await widget.repository.getReductionGoals(widget.userId);
-    setState(() {
-      _assessment = a;
-      _goals = g;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _assessment = a;
+        _goals = g;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _callSamhsa() async {
@@ -47,20 +50,36 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
     }
   }
 
+  Future<void> _launchWebUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open portal: $url'),
+            backgroundColor: AppTheme.neonCrimson,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: AppTheme.obsidianBase,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: AppTheme.obsidianCard,
         elevation: 0,
         title: const Text(
-          'Substance & Alcohol Health',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          'Substance & Alcohol Assessment',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFEC4899)))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.neonCyan))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -72,16 +91,16 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                    color: AppTheme.obsidianCard,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
+                    border: Border.all(color: AppTheme.neonEmerald.withValues(alpha: 0.5)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.phone_in_talk, color: Color(0xFF10B981)),
+                          Icon(Icons.phone_in_talk, color: AppTheme.neonEmerald),
                           SizedBox(width: 8),
                           Text(
                             'SAMHSA National Helpline (24/7)',
@@ -95,14 +114,31 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                         style: TextStyle(fontSize: 12, color: Colors.white70),
                       ),
                       const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-                          onPressed: _callSamhsa,
-                          icon: const Icon(Icons.call),
-                          label: const Text('Call 1-800-662-HELP (4357)'),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.neonEmerald,
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              onPressed: _callSamhsa,
+                              icon: const Icon(Icons.call, size: 18),
+                              label: const Text('Call 1-800-662-4357', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppTheme.neonEmerald),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: () => _launchWebUrl('https://findtreatment.gov'),
+                            icon: const Icon(Icons.open_in_browser, size: 16, color: AppTheme.neonEmerald),
+                            label: const Text('Find Clinic', style: TextStyle(color: AppTheme.neonEmerald, fontSize: 12)),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -111,8 +147,11 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
 
                 // Harm Reduction Goals (FR-042)
                 Card(
-                  color: const Color(0xFF1E293B),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  color: AppTheme.obsidianCard,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: const BorderSide(color: Colors.white12),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -121,49 +160,91 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Personal Harm Reduction Goals',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
+                            const Row(
+                              children: [
+                                Icon(Icons.check_circle_outline, color: AppTheme.neonCyan, size: 18),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Personal Harm Reduction Goals',
+                                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+                                ),
+                              ],
                             ),
                             IconButton(
-                              icon: const Icon(Icons.add_circle, color: Color(0xFFEC4899)),
+                              icon: const Icon(Icons.add_circle, color: AppTheme.neonCyan),
                               onPressed: _showAddGoalDialog,
                             ),
                           ],
                         ),
-                        ..._goals.map((goal) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.check_circle_outline, color: Color(0xFF10B981), size: 18),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(goal, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                                  ),
-                                ],
-                              ),
-                            )),
+                        if (_goals.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              'No reduction goals logged yet. Tap + to set a personal target (e.g. Alcohol-free weekdays, Nicotine taper).',
+                              style: TextStyle(color: Colors.white54, fontSize: 12),
+                            ),
+                          )
+                        else
+                          ..._goals.map((goal) => Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle, color: AppTheme.neonEmerald, size: 16),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(goal, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                                    ),
+                                  ],
+                                ),
+                              )),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // Educational Content (FR-040)
-                const Text(
-                  'Clinical Substance Guidance',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
+                // Verified Clinical Portals & Guidance (Clickable Links)
+                const Row(
+                  children: [
+                    Icon(Icons.link, color: AppTheme.neonCyan, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Verified Clinical Portals & Resources',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
-                _buildEduTile(
-                  title: 'Binge Drinking & Cardiovascular Strain',
-                  content:
-                      'In men 18–39, binge drinking (5+ drinks in 2 hours) triggers acute atrial fibrillation ("Holiday Heart Syndrome"), surges blood pressure, and halts nocturnal growth hormone release by over 70%.',
+
+                _buildResourceTile(
+                  title: 'NIAAA Rethinking Drinking',
+                  subtitle: 'Evidence-based guidance on alcohol limits, low-risk drinking guidelines for men, and personal drink trackers.',
+                  url: 'https://www.rethinkingdrinking.niaaa.nih.gov',
+                  badge: 'NIH / NIAAA Official',
                 ),
-                _buildEduTile(
-                  title: 'Nicotine Vaping & Microvascular Flow',
-                  content:
-                      'Aerosolized nicotine induces immediate vasoconstriction of penile and coronary capillaries, accelerating early-onset erectile dysfunction and arterial stiffening.',
+                _buildResourceTile(
+                  title: 'CDC Men\'s Health: Excessive Alcohol Use',
+                  subtitle: 'Clinical facts on binge drinking, male reproductive health, liver metabolism, and testosterone impairment.',
+                  url: 'https://www.cdc.gov/alcohol/fact-sheets/mens-health.htm',
+                  badge: 'CDC Official Guide',
+                ),
+                _buildResourceTile(
+                  title: 'Smokefree.gov Men\'s Cessation Protocol',
+                  subtitle: 'Evidence-based strategies to quit combustible cigarettes, nicotine vaping, and protect penile microvascular flow.',
+                  url: 'https://smokefree.gov',
+                  badge: 'NCI / HHS Portal',
+                ),
+                _buildResourceTile(
+                  title: 'AUDIT-C Clinical Scoring Manual',
+                  subtitle: 'Official Veterans Affairs & World Health Organization 3-question alcohol screening validation methodology.',
+                  url: 'https://www.hepatitis.va.gov/provider/tools/audit-c.asp',
+                  badge: 'VA / WHO Standard',
+                ),
+                _buildResourceTile(
+                  title: 'NIDA Substance Treatment Locator',
+                  subtitle: 'National Institute on Drug Abuse guidelines and accredited outpatient treatment services locator.',
+                  url: 'https://nida.nih.gov',
+                  badge: 'NIH Portal',
                 ),
               ],
             ),
@@ -174,8 +255,13 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
     final isHazardous = a.isHazardousDrinking;
 
     return Card(
-      color: const Color(0xFF1E293B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      color: AppTheme.obsidianCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: isHazardous ? AppTheme.neonCrimson.withValues(alpha: 0.5) : AppTheme.neonEmerald.withValues(alpha: 0.5),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -186,10 +272,10 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.local_bar, color: Color(0xFFEC4899)),
+                    Icon(Icons.local_bar, color: AppTheme.neonCyan),
                     SizedBox(width: 8),
                     Text(
-                      'AUDIT-C Alcohol Evaluation',
+                      'AUDIT-C Evaluation',
                       style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
                     ),
                   ],
@@ -198,15 +284,15 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: isHazardous
-                        ? const Color(0xFFEF4444).withValues(alpha: 0.2)
-                        : const Color(0xFF10B981).withValues(alpha: 0.2),
+                        ? AppTheme.neonCrimson.withValues(alpha: 0.2)
+                        : AppTheme.neonEmerald.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     'Score: ${a.totalScore}/12',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: isHazardous ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                      color: isHazardous ? AppTheme.neonCrimson : AppTheme.neonEmerald,
                     ),
                   ),
                 ),
@@ -218,19 +304,40 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: isHazardous ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                color: isHazardous ? AppTheme.neonAmber : AppTheme.neonEmerald,
               ),
             ),
             const SizedBox(height: 6),
             Text(a.clinicalGuidance, style: const TextStyle(fontSize: 13, color: Colors.white70)),
             const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFEC4899)),
-                onPressed: _showRetakeAuditDialog,
-                child: const Text('Retake AUDIT-C Questionnaire'),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.neonCyan,
+                      side: const BorderSide(color: AppTheme.neonCyan),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: _showRetakeAuditDialog,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Retake Questionnaire', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.neonCyan,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () => _launchWebUrl('https://www.rethinkingdrinking.niaaa.nih.gov'),
+                    icon: const Icon(Icons.open_in_new, size: 16),
+                    label: const Text('NIAAA Guide', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -238,19 +345,71 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
     );
   }
 
-  Widget _buildEduTile({required String title, required String content}) {
+  Widget _buildResourceTile({
+    required String title,
+    required String subtitle,
+    required String url,
+    required String badge,
+  }) {
     return Card(
-      color: const Color(0xFF1E293B),
+      color: AppTheme.obsidianCard,
       margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14)),
-            const SizedBox(height: 4),
-            Text(content, style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.4)),
-          ],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Colors.white12),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _launchWebUrl(url),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.neonCyan.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      badge,
+                      style: const TextStyle(fontSize: 10, color: AppTheme.neonCyan, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.3),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.open_in_new, size: 13, color: AppTheme.neonCyan),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      url,
+                      style: const TextStyle(fontSize: 11, color: AppTheme.neonCyan, decoration: TextDecoration.underline),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -267,7 +426,7 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: const Color(0xFF1E293B),
+              backgroundColor: AppTheme.obsidianCard,
               title: const Text('AUDIT-C Assessment', style: TextStyle(color: Colors.white, fontSize: 16)),
               content: SingleChildScrollView(
                 child: Column(
@@ -277,7 +436,7 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                     DropdownButton<int>(
                       value: q1,
                       isExpanded: true,
-                      dropdownColor: const Color(0xFF1E293B),
+                      dropdownColor: AppTheme.obsidianCard,
                       style: const TextStyle(color: Colors.white),
                       items: const [
                         DropdownMenuItem(value: 0, child: Text('Never')),
@@ -293,7 +452,7 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                     DropdownButton<int>(
                       value: q2,
                       isExpanded: true,
-                      dropdownColor: const Color(0xFF1E293B),
+                      dropdownColor: AppTheme.obsidianCard,
                       style: const TextStyle(color: Colors.white),
                       items: const [
                         DropdownMenuItem(value: 0, child: Text('1 or 2')),
@@ -309,7 +468,7 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                     DropdownButton<int>(
                       value: q3,
                       isExpanded: true,
-                      dropdownColor: const Color(0xFF1E293B),
+                      dropdownColor: AppTheme.obsidianCard,
                       style: const TextStyle(color: Colors.white),
                       items: const [
                         DropdownMenuItem(value: 0, child: Text('Never')),
@@ -329,7 +488,7 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                   child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
                 ),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEC4899)),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.neonCyan),
                   onPressed: () async {
                     final assessment = AuditCAssessment(
                       id: 'audit_${DateTime.now().millisecondsSinceEpoch}',
@@ -345,7 +504,7 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                       _loadData();
                     }
                   },
-                  child: const Text('Calculate & Save'),
+                  child: const Text('Calculate & Save', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -361,8 +520,8 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: const Text('New Reduction Goal', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppTheme.obsidianCard,
+          title: const Text('New Reduction Goal', style: TextStyle(color: Colors.white, fontSize: 16)),
           content: TextField(
             controller: goalCtrl,
             style: const TextStyle(color: Colors.white),
@@ -377,7 +536,7 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
               child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEC4899)),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.neonCyan),
               onPressed: () async {
                 if (goalCtrl.text.trim().isNotEmpty) {
                   await widget.repository.addReductionGoal(widget.userId, goalCtrl.text.trim());
@@ -387,7 +546,7 @@ class _SubstanceAssessmentScreenState extends State<SubstanceAssessmentScreen> {
                   }
                 }
               },
-              child: const Text('Add Goal'),
+              child: const Text('Add Goal', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ),
           ],
         );

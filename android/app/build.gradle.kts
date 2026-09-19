@@ -22,9 +22,35 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            val keystore = file("male_vitality.jks")
+            if (keystore.exists()) {
+                storeFile = keystore
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "malevitality"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
+            }
+        }
+        getByName("debug") {
+            val keystore = file("male_vitality.jks")
+            if (keystore.exists()) {
+                storeFile = keystore
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "malevitality"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            val releaseKeystore = file("male_vitality.jks")
+            if (releaseKeystore.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }

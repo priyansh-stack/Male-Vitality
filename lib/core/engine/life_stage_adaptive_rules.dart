@@ -39,14 +39,6 @@ class ModuleMetadata {
 
 class LifeStageAdaptiveRules {
   static const Map<HealthModuleId, ModuleMetadata> allModules = {
-    HealthModuleId.dashboard: ModuleMetadata(
-      id: HealthModuleId.dashboard,
-      title: 'Health Dashboard',
-      description: 'Vital signs, daily score, and today\'s focus.',
-      icon: Icons.dashboard_rounded,
-      route: '/dashboard',
-      accentColor: Color(0xFF3B82F6),
-    ),
     HealthModuleId.preventiveCare: ModuleMetadata(
       id: HealthModuleId.preventiveCare,
       title: 'Preventive Care',
@@ -87,77 +79,37 @@ class LifeStageAdaptiveRules {
       route: '/substance-assessment',
       accentColor: Color(0xFFEC4899),
     ),
-    HealthModuleId.stiAssessment: ModuleMetadata(
-      id: HealthModuleId.stiAssessment,
-      title: 'STI Risk & Testing Locator',
-      description: 'Confidential risk evaluation and free test center discovery.',
-      icon: Icons.shield_rounded,
-      route: '/sexual-health/sti',
-      accentColor: Color(0xFFE11D48),
-    ),
     HealthModuleId.hormoneSexualHealth: ModuleMetadata(
       id: HealthModuleId.hormoneSexualHealth,
       title: 'Hormone & Sexual Health',
-      description: 'Testosterone ADAM score, ED causes, prostate health, and fertility.',
+      description: 'Testosterone ADAM score, ED causes, prostate health, STI finder & fertility.',
       icon: Icons.male_rounded,
       route: '/sexual-health',
       accentColor: Color(0xFF2563EB),
     ),
-    HealthModuleId.fertilityTracker: ModuleMetadata(
-      id: HealthModuleId.fertilityTracker,
-      title: 'Male Fertility Guide',
-      description: 'Sperm quality optimization, motility factors, and specialist advice.',
-      icon: Icons.child_care_rounded,
-      route: '/sexual-health/fertility',
-      accentColor: Color(0xFF14B8A6),
-    ),
     HealthModuleId.medicationManager: ModuleMetadata(
       id: HealthModuleId.medicationManager,
-      title: 'Medication Manager',
-      description: 'Dosage reminders, refill tracking, and adherence logs.',
+      title: 'Medication & Drug Safety',
+      description: 'Dosage reminders, refill tracking, and automated polypharmacy safety alerts.',
       icon: Icons.medication_rounded,
       route: '/medications',
       accentColor: Color(0xFF0284C7),
     ),
-    HealthModuleId.polypharmacyAlerts: ModuleMetadata(
-      id: HealthModuleId.polypharmacyAlerts,
-      title: 'Drug Interaction & Polypharmacy',
-      description: 'Automated 5+ drug interaction safety and contraindication alerts.',
-      icon: Icons.warning_amber_rounded,
-      route: '/medications/interactions',
-      accentColor: Color(0xFFDC2626),
-    ),
     HealthModuleId.telehealth: ModuleMetadata(
       id: HealthModuleId.telehealth,
       title: 'Telehealth & Provider Consult',
-      description: 'Video consults with urologists and comprehensive PDF summary sharing.',
+      description: 'Consultations with urologists and comprehensive PDF summary sharing.',
       icon: Icons.video_camera_front_rounded,
       route: '/telehealth',
       accentColor: Color(0xFF059669),
     ),
     HealthModuleId.fallDetection: ModuleMetadata(
       id: HealthModuleId.fallDetection,
-      title: 'Fall Detection & Safety',
-      description: 'Sensor-based fall monitor and instant emergency contact alerts.',
+      title: 'Senior Vitality & Safety',
+      description: 'Sensor-based fall monitor, cognitive brain training, and caregiver portal.',
       icon: Icons.personal_injury_rounded,
       route: '/senior-care/fall-detection',
       accentColor: Color(0xFFEF4444),
-    ),
-    HealthModuleId.cognitiveExercise: ModuleMetadata(
-      id: HealthModuleId.cognitiveExercise,
-      title: 'Cognitive Brain Training',
-      description: 'Daily memory, processing speed, and neuro-plasticity exercises.',
-      icon: Icons.extension_rounded,
-      route: '/senior-care/brain-training',
-      accentColor: Color(0xFF7C3AED),
-    ),
-    HealthModuleId.caregiverPortal: ModuleMetadata(
-      id: HealthModuleId.caregiverPortal,
-      title: 'Caregiver Portal',
-      description: 'Delegated read/collaborative dashboard for family and caregivers.',
-      icon: Icons.supervisor_account_rounded,
-      route: '/senior-care/caregiver',
-      accentColor: Color(0xFF4B5563),
     ),
   };
 
@@ -165,6 +117,13 @@ class LifeStageAdaptiveRules {
   static bool isModuleEnabledByDefault(LifeStage stage, HealthModuleId moduleId) {
     switch (moduleId) {
       case HealthModuleId.dashboard:
+      case HealthModuleId.stiAssessment:
+      case HealthModuleId.fertilityTracker:
+      case HealthModuleId.polypharmacyAlerts:
+      case HealthModuleId.cognitiveExercise:
+      case HealthModuleId.caregiverPortal:
+        return false; // Sub-module tabs consolidated under their parent suites
+
       case HealthModuleId.preventiveCare:
       case HealthModuleId.mentalWellness:
       case HealthModuleId.fitnessNutrition:
@@ -172,39 +131,25 @@ class LifeStageAdaptiveRules {
         return true;
 
       case HealthModuleId.substanceUse:
-      case HealthModuleId.stiAssessment:
-        // Enabled for Teen, Young Adult, Adult (13–39)
         return stage == LifeStage.teen ||
             stage == LifeStage.youngAdult ||
             stage == LifeStage.adult;
 
       case HealthModuleId.hormoneSexualHealth:
-        // Enabled for 26+
-        return stage != LifeStage.teen && stage != LifeStage.youngAdult;
-
-      case HealthModuleId.fertilityTracker:
-        // Enabled for Adult & Mid-Life (26–54)
-        return stage == LifeStage.adult || stage == LifeStage.midLife;
+        // Enabled for 20+
+        return stage != LifeStage.teen;
 
       case HealthModuleId.medicationManager:
-        // Enabled for Mid-Life, Older Adult, Senior (40+)
-        return stage == LifeStage.midLife ||
-            stage == LifeStage.olderAdult ||
-            stage == LifeStage.senior;
-
-      case HealthModuleId.polypharmacyAlerts:
-      case HealthModuleId.cognitiveExercise:
-      case HealthModuleId.caregiverPortal:
-        // Enabled for 55+
-        return stage == LifeStage.olderAdult || stage == LifeStage.senior;
+        // Enabled for Adult, Mid-Life, Older Adult, Senior
+        return stage != LifeStage.teen && stage != LifeStage.youngAdult;
 
       case HealthModuleId.telehealth:
         // Enabled for 18+
         return stage != LifeStage.teen;
 
       case HealthModuleId.fallDetection:
-        // Senior 70+
-        return stage == LifeStage.senior;
+        // Senior & Older Adult (55+)
+        return stage == LifeStage.olderAdult || stage == LifeStage.senior;
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
 
 class UnifiedTrackScreen extends StatelessWidget {
   final String userId;
@@ -9,83 +10,147 @@ class UnifiedTrackScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: AppTheme.obsidianBase,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: AppTheme.obsidianBase,
         elevation: 0,
-        title: const Text(
-          'Unified Health Logging',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        title: const Row(
+          children: [
+            Icon(Icons.track_changes_rounded, color: AppTheme.neonCyan, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'TELEMETRY INGESTION CHANNELS',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                fontSize: 14,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ],
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
         children: [
-          const Text(
-            'What would you like to log right now?',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: AppTheme.cyberCardDecoration(borderColor: AppTheme.neonCyan.withOpacity(0.35)),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.neonCyan.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.bolt_rounded, color: AppTheme.neonCyan, size: 24),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CALIBRATE LIVE BIOMETRICS',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Direct sensor feeds continuously recalibrate your Composite Vitality Index.',
+                        style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.3),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Record daily inputs to update your real-time Vitality Score.',
-            style: TextStyle(fontSize: 12, color: Colors.white60),
+          const SizedBox(height: 20),
+
+          Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: AppTheme.neonCyan,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'AVAILABLE TELEMETRY CHANNELS',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.neonCyan,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           _buildTrackTile(
             context,
             icon: Icons.monitor_heart_rounded,
-            title: 'Vital Signs',
-            subtitle: 'Blood Pressure, Resting Heart Rate, Weight, Fasting Glucose',
-            color: const Color(0xFFEF4444),
+            title: 'VITAL SIGNS & HEMODYNAMICS',
+            subtitle: 'Blood Pressure, Resting Heart Rate, Body Composition, Glucose',
+            color: AppTheme.neonCrimson,
             route: '/add-metric',
           ),
           _buildTrackTile(
             context,
-            icon: Icons.mood_rounded,
-            title: 'Mood & Emotional State',
-            subtitle: 'PHQ-2 depression & GAD-2 anxiety check-in with triggers',
-            color: const Color(0xFF8B5CF6),
+            icon: Icons.psychology_rounded,
+            title: 'NEURO-AFFECTIVE CHECK-IN',
+            subtitle: 'PHQ-2 depression & GAD-2 anxiety clinical screening with stressors',
+            color: AppTheme.neonPurple,
             route: '/mood-checkin',
           ),
           _buildTrackTile(
             context,
             icon: Icons.bedtime_rounded,
-            title: 'Sleep Session',
-            subtitle: 'Duration, sleep efficiency, and morning grogginess rating',
-            color: const Color(0xFF6366F1),
+            title: 'CIRCADIAN & SLEEP ARCHITECTURE',
+            subtitle: 'REM latency, efficiency metrics, and sleep phase continuity',
+            color: AppTheme.neonCyan,
             route: '/sleep-optimizer',
           ),
           _buildTrackTile(
             context,
             icon: Icons.restaurant_rounded,
-            title: 'Meal & Nutrition',
-            subtitle: 'Calories, protein grams, carbs, fat, and daily hydration',
-            color: const Color(0xFFF97316),
+            title: 'METABOLIC & MACRONUTRIENT LOG',
+            subtitle: 'Caloric load, bioavailable protein, micronutrient index & hydration',
+            color: AppTheme.neonAmber,
             route: '/fitness-nutrition',
           ),
           _buildTrackTile(
             context,
             icon: Icons.medication_rounded,
-            title: 'Medication Dose',
-            subtitle: 'Confirm scheduled doses taken and check refill status',
-            color: const Color(0xFF0284C7),
+            title: 'PHARMACOTHERAPY ADHERENCE',
+            subtitle: 'Log scheduled prescription doses and check therapeutic windows',
+            color: AppTheme.neonCyan,
             route: '/medications',
           ),
           _buildTrackTile(
             context,
             icon: Icons.local_bar_rounded,
-            title: 'Alcohol & Substance',
-            subtitle: 'AUDIT-C screening check and reduction goal progress',
-            color: const Color(0xFFEC4899),
+            title: 'TOXICOLOGY & SUBSTANCE AUDIT',
+            subtitle: 'AUDIT-C evidence-based scoring and harm reduction monitoring',
+            color: AppTheme.neonCrimson,
             route: '/substance-assessment',
           ),
           _buildTrackTile(
             context,
             icon: Icons.male_rounded,
-            title: 'Testosterone Symptoms',
-            subtitle: 'ADAM questionnaire 10-symptom endocrine tracking',
-            color: const Color(0xFF2563EB),
+            title: 'ENDOCRINE & ADAM QUESTIONNAIRE',
+            subtitle: 'Androgen deficiency clinical 10-point symptom telemetry',
+            color: AppTheme.neonPurple,
             route: '/sexual-health',
           ),
         ],
@@ -101,37 +166,47 @@ class UnifiedTrackScreen extends StatelessWidget {
     required Color color,
     required String route,
   }) {
-    return Card(
-      color: const Color(0xFF1E293B),
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: color.withValues(alpha: 0.3)),
-      ),
+      decoration: AppTheme.cyberCardDecoration(borderColor: color.withOpacity(0.35)),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
           ),
-          child: Icon(icon, color: color, size: 24),
+          child: Icon(icon, color: color, size: 22),
         ),
         title: Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            fontSize: 12,
+            letterSpacing: 0.8,
+          ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             subtitle,
-            style: const TextStyle(fontSize: 12, color: Colors.white70),
+            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.3),
           ),
         ),
-        trailing: const Icon(Icons.add_circle_outline, color: Colors.white70),
+        trailing: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.add_rounded, color: color, size: 18),
+        ),
         onTap: () => context.push(route),
       ),
     );
   }
 }
+

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../router/app_router.dart';
 import '../../services/auth_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -34,6 +35,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   void _onAuthCheckRequested(AuthCheckRequested event, Emitter<AuthState> emit) {
     if (_isSigningOut) {
       emit(Unauthenticated());
+      AppRouter.refresh();
       return;
     }
     
@@ -43,6 +45,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } else {
       emit(Unauthenticated());
     }
+    AppRouter.refresh();
   }
 
   Future<void> _onAuthGoogleSignInRequested(AuthGoogleSignInRequested event, Emitter<AuthState> emit) async {
@@ -50,6 +53,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final user = await _authService.signInWithGoogle();
       emit(Authenticated(user));
+      AppRouter.refresh();
     } catch (e) {
       emit(AuthFailure(e.toString()));
     }

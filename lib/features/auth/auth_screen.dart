@@ -255,7 +255,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         _SecurityPill(
                           icon: Icons.lock_outline_rounded,
                           title: 'HIPAA & SOC2 Compliant Cloud',
-                          subtitle: 'Firebase Cloud Firestore project male-vitality-427d9',
+                          subtitle: 'Firebase Cloud Firestore project fitbit-health-dash-81a2f',
                         ),
                         SizedBox(height: 12),
                         _SecurityPill(

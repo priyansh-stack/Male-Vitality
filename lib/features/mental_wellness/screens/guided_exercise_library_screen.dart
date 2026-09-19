@@ -20,7 +20,6 @@ class GuidedExerciseLibraryScreen extends StatefulWidget {
 class _GuidedExerciseLibraryScreenState extends State<GuidedExerciseLibraryScreen> {
   ExerciseType? _selectedType;
   LifeStage? _selectedAgeGroup;
-  String _searchQuery = '';
 
   @override
   void initState() {

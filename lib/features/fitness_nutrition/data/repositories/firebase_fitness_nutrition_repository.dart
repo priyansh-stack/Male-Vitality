@@ -17,14 +17,20 @@ class FirebaseFitnessNutritionRepository implements IFitnessNutritionRepository 
     return ClinicalWorkoutProtocols.routines[stage] ?? [];
   }
 
+  DocumentReference<Map<String, dynamic>> _maleVitality(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('apps')
+        .doc('male_vitality');
+  }
+
   @override
   Future<List<MealEntry>> getTodayMeals(String userId) async {
     try {
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
+      final snapshot = await _maleVitality(userId)
           .collection('meals')
           .where('timestamp', isGreaterThanOrEqualTo: startOfDay.toIso8601String())
           .get();
@@ -37,9 +43,7 @@ class FirebaseFitnessNutritionRepository implements IFitnessNutritionRepository 
 
   @override
   Future<void> logMeal(String userId, MealEntry meal) async {
-    await _firestore
-        .collection('users')
-        .doc(userId)
+    await _maleVitality(userId)
         .collection('meals')
         .doc(meal.id)
         .set(meal.toMap());
@@ -49,9 +53,7 @@ class FirebaseFitnessNutritionRepository implements IFitnessNutritionRepository 
   Future<int> getTodayWaterMl(String userId) async {
     try {
       final dateKey = DateTime.now().toIso8601String().substring(0, 10);
-      final doc = await _firestore
-          .collection('users')
-          .doc(userId)
+      final doc = await _maleVitality(userId)
           .collection('hydration')
           .doc(dateKey)
           .get();
@@ -64,9 +66,7 @@ class FirebaseFitnessNutritionRepository implements IFitnessNutritionRepository 
   @override
   Future<void> addWaterMl(String userId, int amountMl) async {
     final dateKey = DateTime.now().toIso8601String().substring(0, 10);
-    await _firestore
-        .collection('users')
-        .doc(userId)
+    await _maleVitality(userId)
         .collection('hydration')
         .doc(dateKey)
         .set({'amountMl': FieldValue.increment(amountMl)}, SetOptions(merge: true));
@@ -75,11 +75,61 @@ class FirebaseFitnessNutritionRepository implements IFitnessNutritionRepository 
   @override
   Future<void> resetTodayWater(String userId) async {
     final dateKey = DateTime.now().toIso8601String().substring(0, 10);
-    await _firestore
-        .collection('users')
-        .doc(userId)
+    await _maleVitality(userId)
         .collection('hydration')
         .doc(dateKey)
         .set({'amountMl': 0});
+  }
+
+  @override
+  Future<List<WorkoutRoutine>> getUserActiveRoutines(String userId) async {
+    try {
+      final snapshot = await _maleVitality(userId)
+          .collection('activeRoutines')
+          .get();
+      return snapshot.docs.map((doc) => WorkoutRoutine.fromMap(doc.data())).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
+  Future<void> addActiveRoutine(String userId, WorkoutRoutine routine) async {
+    await _maleVitality(userId)
+        .collection('activeRoutines')
+        .doc(routine.id)
+        .set(routine.toMap());
+  }
+
+  @override
+  Future<void> removeActiveRoutine(String userId, String routineId) async {
+    await _maleVitality(userId)
+        .collection('activeRoutines')
+        .doc(routineId)
+        .delete();
+  }
+
+  @override
+  Future<NutritionDailyTarget?> getNutritionTarget(String userId) async {
+    try {
+      final doc = await _maleVitality(userId)
+          .collection('nutritionSettings')
+          .doc('dailyTarget')
+          .get();
+      if (doc.exists && doc.data() != null) {
+        return NutritionDailyTarget.fromMap(doc.data()!);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveNutritionTarget(String userId, NutritionDailyTarget target) async {
+    await _maleVitality(userId)
+        .collection('nutritionSettings')
+        .doc('dailyTarget')
+        .set(target.toMap(), SetOptions(merge: true));
   }
 }

@@ -23,7 +23,7 @@ class _MoodCheckinScreenState extends State<MoodCheckinScreen> {
   int? _phq2Score;
   int? _gad2Score;
   String? _notes;
-  List<String> _triggers = [];
+  final List<String> _triggers = [];
   final TextEditingController _notesController = TextEditingController();
 
   final List<String> _availableTriggers = [

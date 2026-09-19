@@ -1,4 +1,4 @@
-import 'dart:math' as Math;
+import 'dart:math' as math;
 import '../../../core/services/mental_wellness/mental_wellness_repository.dart';
 
 class AnalyzeMoodTrendsUseCase {
@@ -39,8 +39,11 @@ class AnalyzeMoodTrendsUseCase {
       final firstAvg = firstHalf.reduce((a, b) => a + b) / firstHalf.length;
       final secondAvg = secondHalf.reduce((a, b) => a + b) / secondHalf.length;
 
-      if (secondAvg > firstAvg + 0.5) trend = 'improving';
-      else if (secondAvg < firstAvg - 0.5) trend = 'declining';
+      if (secondAvg > firstAvg + 0.5) {
+        trend = 'improving';
+      } else if (secondAvg < firstAvg - 0.5) {
+        trend = 'declining';
+      }
     }
 
     // Calculate volatility (standard deviation)
@@ -69,5 +72,5 @@ class AnalyzeMoodTrendsUseCase {
 }
 
 extension DoubleExtension on double {
-  double sqrt() => this > 0 ? Math.sqrt(this) : 0.0;
+  double sqrt() => this > 0 ? math.sqrt(this) : 0.0;
 }

@@ -9,11 +9,11 @@ class FirebaseSubstanceRepository implements ISubstanceRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   DocumentReference<Map<String, dynamic>> _userSubstanceDoc(String userId) {
-    return _firestore.collection('users').doc(userId).collection('substance').doc('latest_audit_c');
+    return _firestore.collection('users').doc(userId).collection('apps').doc('male_vitality').collection('substance').doc('latest_audit_c');
   }
 
   DocumentReference<Map<String, dynamic>> _userGoalsDoc(String userId) {
-    return _firestore.collection('users').doc(userId).collection('substance').doc('reduction_goals');
+    return _firestore.collection('users').doc(userId).collection('apps').doc('male_vitality').collection('substance').doc('reduction_goals');
   }
 
   @override

@@ -144,7 +144,7 @@ class _MoodHistoryScreenState extends State<MoodHistoryScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildStatItem('Average', '${avgMood.toStringAsFixed(1)}', Icons.trending_up),
+            _buildStatItem('Average', avgMood.toStringAsFixed(1), Icons.trending_up),
             _buildStatItem('Highest', '$highestMood', Icons.arrow_upward, AppTheme.healthyGreen),
             _buildStatItem('Lowest', '$lowestMood', Icons.arrow_downward, AppTheme.dangerRed),
             _buildStatItem('Entries', '${entries.length}', Icons.list),
@@ -289,7 +289,7 @@ class _MoodHistoryScreenState extends State<MoodHistoryScreen> {
                 ),
                 title: Text(entry.notes ?? 'No notes'),
                 subtitle: Text(
-                  '${entry.triggers.join(', ')}',
+                  entry.triggers.join(', '),
                   style: const TextStyle(fontSize: 12),
                 ),
               )),

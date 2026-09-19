@@ -4,6 +4,7 @@ import '../models/health_metric.dart';
 import '../models/health_score.dart';
 import '../models/health_enums.dart';
 import '../models/user_profile.dart';
+import '../models/health_daily.dart';
 import 'firestore_service.dart';
 import 'clinical_engine.dart';
 
@@ -11,17 +12,44 @@ class DatabaseService {
   final FirestoreService firestoreService;
   final FirebaseFirestore firestore;
 
-  DatabaseService({
-    required this.firestoreService,
-    required this.firestore,
-  });
+  DatabaseService({required this.firestoreService, required this.firestore});
+
+  // Health Daily Aggregates (Fitbit / Google Health Consumer)
+  Future<HealthDaily?> getTodayHealthDaily(String userId) async {
+    return await firestoreService.getTodayHealthDaily(userId);
+  }
+
+  Future<HealthDaily?> getHealthDailyForDate(String userId, String date) async {
+    return await firestoreService.getHealthDailyForDate(userId, date);
+  }
+
+  Future<List<HealthDaily>> getRecentHealthDailies(
+    String userId, {
+    int limit = 7,
+  }) async {
+    return await firestoreService.getRecentHealthDailies(userId, limit: limit);
+  }
+
+  Stream<HealthDaily?> watchTodayHealthDaily(String userId) {
+    return firestoreService.watchTodayHealthDaily(userId);
+  }
+
+  Stream<List<HealthDaily>> watchRecentHealthDailies(
+    String userId, {
+    int limit = 7,
+  }) {
+    return firestoreService.watchRecentHealthDailies(userId, limit: limit);
+  }
 
   // Health Metrics
   Future<void> saveHealthMetric(HealthMetric metric) async {
     await firestoreService.saveHealthMetric(metric);
   }
 
-  Future<List<HealthMetric>> getRecentMetrics(String userId, {int days = 7}) async {
+  Future<List<HealthMetric>> getRecentMetrics(
+    String userId, {
+    int days = 7,
+  }) async {
     return await firestoreService.getRecentMetrics(userId, days: days);
   }
 
@@ -60,16 +88,19 @@ class DatabaseService {
     try {
       // Fetch physical metrics (30 days)
       final metrics = await firestoreService.getRecentMetrics(userId, days: 30);
-    
+
       //  Fetch mood entries for mental score (7 days)
-      final moodEntries = await firestoreService.getMoodEntries(userId, days: 7);
-      
+      final moodEntries = await firestoreService.getMoodEntries(
+        userId,
+        days: 7,
+      );
+
       // Calculate combined health score
       final healthScore = ClinicalEngine.calculateHealthScore(
         metrics: metrics,
         moodEntries: moodEntries,
       );
-      
+
       return healthScore;
     } catch (e) {
       return HealthScore(
@@ -86,8 +117,11 @@ class DatabaseService {
   Future<TodayFocus> getTodayFocus(String userId) async {
     try {
       final metrics = await firestoreService.getRecentMetrics(userId, days: 1);
-      final moodEntries = await firestoreService.getMoodEntries(userId, days: 1);
-      
+      final moodEntries = await firestoreService.getMoodEntries(
+        userId,
+        days: 1,
+      );
+
       return ClinicalEngine.getTodayFocus(
         metrics: metrics,
         moodEntries: moodEntries,
@@ -117,7 +151,10 @@ class DatabaseService {
   //  NEW: MOOD TREND ANALYSIS
   Future<Map<String, dynamic>> analyzeMoodTrends(String userId) async {
     try {
-      final moodEntries = await firestoreService.getMoodEntries(userId, days: 14);
+      final moodEntries = await firestoreService.getMoodEntries(
+        userId,
+        days: 14,
+      );
       return ClinicalEngine.analyzeMoodTrends(moodEntries);
     } catch (e) {
       return {
@@ -131,7 +168,10 @@ class DatabaseService {
   }
 
   // User Preferences
-  Future<void> saveUserVisibleMetrics(String userId, Set<MetricType> metrics) async {
+  Future<void> saveUserVisibleMetrics(
+    String userId,
+    Set<MetricType> metrics,
+  ) async {
     await firestoreService.saveUserVisibleMetrics(userId, metrics);
   }
 

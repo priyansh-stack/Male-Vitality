@@ -10,10 +10,10 @@ class FirebaseFertilityRepository implements IFertilityRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _analyses(String userId) =>
-      _firestore.collection('users').doc(userId).collection('semen_analyses');
+      _firestore.collection('users').doc(userId).collection('apps').doc('male_vitality').collection('semen_analyses');
 
   DocumentReference<Map<String, dynamic>> _lifestyleDoc(String userId) =>
-      _firestore.collection('users').doc(userId).collection('fertility').doc('lifestyle_audit');
+      _firestore.collection('users').doc(userId).collection('apps').doc('male_vitality').collection('fertility').doc('lifestyle_audit');
 
   @override
   Future<List<SemenAnalysisRecord>> getAnalysisHistory(String userId) async {

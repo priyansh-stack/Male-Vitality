@@ -9,12 +9,18 @@ class FirebaseSexualHealthRepository implements ISexualHealthRepository {
   FirebaseSexualHealthRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  DocumentReference<Map<String, dynamic>> _maleVitality(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('apps')
+        .doc('male_vitality');
+  }
+
   @override
   Future<List<TestosteroneSymptomLog>> getTestosteroneLogs(String userId) async {
     try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
+      final snapshot = await _maleVitality(userId)
           .collection('testosterone_logs')
           .orderBy('timestamp', descending: true)
           .get();
@@ -29,9 +35,7 @@ class FirebaseSexualHealthRepository implements ISexualHealthRepository {
 
   @override
   Future<void> saveTestosteroneLog(TestosteroneSymptomLog log) async {
-    await _firestore
-        .collection('users')
-        .doc(log.userId)
+    await _maleVitality(log.userId)
         .collection('testosterone_logs')
         .doc(log.id)
         .set(log.toMap());
@@ -68,9 +72,7 @@ class FirebaseSexualHealthRepository implements ISexualHealthRepository {
   @override
   Future<StiRiskAssessment?> getLatestStiAssessment(String userId) async {
     try {
-      final doc = await _firestore
-          .collection('users')
-          .doc(userId)
+      final doc = await _maleVitality(userId)
           .collection('sexual_health')
           .doc('latest_sti_assessment')
           .get();
@@ -86,9 +88,7 @@ class FirebaseSexualHealthRepository implements ISexualHealthRepository {
 
   @override
   Future<void> saveStiAssessment(StiRiskAssessment assessment) async {
-    await _firestore
-        .collection('users')
-        .doc(assessment.userId)
+    await _maleVitality(assessment.userId)
         .collection('sexual_health')
         .doc('latest_sti_assessment')
         .set(assessment.toMap());

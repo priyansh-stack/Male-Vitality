@@ -17,19 +17,16 @@ import '../../../core/bloc/Health_Dashboard/support_states.dart';
 import '../../../core/bloc/auth/auth_bloc.dart';
 import '../../../core/bloc/auth/auth_state.dart';
 import '../../../core/bloc/health_sync/health_sync_bloc.dart';
-import '../../../core/bloc/health_sync/health_sync_state.dart';
+import '../../../core/bloc/health_sync/health_sync_event.dart';
 import '../../../core/bloc/onboarding/onboarding_bloc.dart';
-import '../../../core/bloc/onboarding/onboarding_state.dart';
 import '../../../core/models/health_enums.dart';
+import '../../../core/services/firestore_service.dart';
 import '../../../core/theme/app_theme.dart';
 
 class UnifiedDashboardScreen extends StatefulWidget {
   final String userId;
 
-  const UnifiedDashboardScreen({
-    super.key,
-    required this.userId,
-  });
+  const UnifiedDashboardScreen({super.key, required this.userId});
 
   static void resetState() {
     _UnifiedDashboardScreenState.resetState();
@@ -39,18 +36,18 @@ class UnifiedDashboardScreen extends StatefulWidget {
   State<UnifiedDashboardScreen> createState() => _UnifiedDashboardScreenState();
 }
 
-class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
-  static bool _isLoading = true;
-  static bool _isInitialLoad = true;
+class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
+    with AutomaticKeepAliveClientMixin<UnifiedDashboardScreen> {
   static bool _isLoadingData = false;
   static String? _lastLoadedUserId;
   static DateTime? _lastLoadTime;
-  
-  static const Duration _minLoadInterval = Duration(milliseconds: 500);
+
+  static const Duration _minLoadInterval = Duration(seconds: 15);
+
+  @override
+  bool get wantKeepAlive => true;
 
   static void resetState() {
-    _isLoading = true;
-    _isInitialLoad = true;
     _isLoadingData = false;
     _lastLoadedUserId = null;
     _lastLoadTime = null;
@@ -60,7 +57,6 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _isInitialLoad = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDashboardData();
     });
@@ -70,6 +66,7 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
   void didUpdateWidget(UnifiedDashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.userId != widget.userId && widget.userId.isNotEmpty) {
+      _lastLoadedUserId = null;
       _loadDashboardData();
     }
   }
@@ -86,7 +83,7 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
     }
 
     String userId = widget.userId;
-    
+
     if (userId.isEmpty) {
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
@@ -95,52 +92,49 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
     }
 
     if (userId.isEmpty) {
-      debugPrint(' No userId available, skipping load');
-      if (_isInitialLoad) {
-        setState(() {
-          _isLoading = false;
-          _isInitialLoad = false;
-        });
-      }
+      debugPrint('❌ No userId available, skipping load');
       return;
     }
 
+    // If dashboard is already loaded with valid data for this user, do not trigger a full reload spinner
+    final dashboardBloc = context.read<DashboardBloc>();
+    if (dashboardBloc.state is DashboardLoaded) {
+      final currentData = dashboardBloc.state as DashboardLoaded;
+      if (currentData.healthScore.userId == userId) {
+        debugPrint('✅ Dashboard data already active for user: $userId (skipping reload)');
+        return;
+      }
+    }
+
     final now = DateTime.now();
-    if (_lastLoadedUserId == userId && 
-        _lastLoadTime != null && 
+    if (_lastLoadedUserId == userId &&
+        _lastLoadTime != null &&
         now.difference(_lastLoadTime!) < _minLoadInterval) {
-      debugPrint('⏭️ Skipping duplicate load for user: $userId (too soon)');
+      debugPrint(
+        '⏭️ Skipping duplicate load for user: $userId (cooldown active)',
+      );
       return;
     }
 
     _isLoadingData = true;
     _lastLoadedUserId = userId;
     _lastLoadTime = now;
-    
-    if (_isInitialLoad) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
 
-    debugPrint(' Loading dashboard for userId: $userId');
-    
-    context.read<DashboardBloc>().add(
-      LoadDashboardData(userId: userId),
-    );
+    debugPrint('🔄 Loading dashboard for userId: $userId');
+
+    context.read<DashboardBloc>().add(LoadDashboardData(userId: userId));
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final authState = context.watch<AuthBloc>().state;
     final onboardingState = context.watch<OnboardingBloc>().state;
-    final healthSyncState = context.watch<HealthSyncBloc>().state;
-    final dashboardState = context.watch<DashboardBloc>().state;
 
     String userId = '';
     String userName = 'User';
     String userEmail = '';
-    
+
     if (authState is Authenticated) {
       userId = authState.user.uid;
       userName = authState.user.displayName;
@@ -154,60 +148,98 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
     }
 
     final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good Morning' :
-        hour < 17 ? 'Good Afternoon' :
-        'Good Evening';
+    final greeting = hour < 12
+        ? 'Good Morning'
+        : hour < 17
+        ? 'Good Afternoon'
+        : 'Good Evening';
 
     if (authState is! Authenticated) {
-      if (_isLoading || _isLoadingData) {
-        _isLoading = false;
-        _isLoadingData = false;
-      }
-      
+      _isLoadingData = false;
+
       return Scaffold(
-        backgroundColor: AppTheme.backgroundLight,
-        appBar: _buildAppBar(context, userName, userEmail),
+        backgroundColor: AppTheme.obsidianBase,
+        appBar: _buildAppBar(context, userName, userEmail, userId),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              const Text(
-                'Please log in to view your dashboard',
-                style: TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => context.go('/auth'),
-                child: const Text('Go to Login'),
-              ),
-            ],
+          child: Container(
+            margin: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
+            decoration: AppTheme.cyberCardDecoration(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.neonCyan.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_outline,
+                    size: 48,
+                    color: AppTheme.neonCyan,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'BIOMETRIC AUTHENTICATION REQUIRED',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Please authorize credentials to initialize Vitality Command HUD',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => context.go('/auth'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.neonCyan,
+                    foregroundColor: AppTheme.obsidianBase,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'AUTHENTICATE ACCESS',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
-      appBar: _buildAppBar(context, userName, userEmail),
+      backgroundColor: AppTheme.obsidianBase,
+      appBar: _buildAppBar(context, userName, userEmail, userId),
       body: BlocConsumer<DashboardBloc, DashboardState>(
         listener: (context, state) {
           if (state is DashboardLoaded || state is DashboardError) {
             _isLoadingData = false;
-            if (_isInitialLoad) {
-              setState(() {
-                _isLoading = false;
-                _isInitialLoad = false;
-              });
-            }
           }
-          
+
           if (state is DashboardError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
-                backgroundColor: Colors.red,
+                backgroundColor: AppTheme.neonCrimson,
               ),
             );
           }
@@ -215,26 +247,30 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
-                backgroundColor: AppTheme.healthyGreen,
+                backgroundColor: AppTheme.neonEmerald,
               ),
             );
           }
         },
         builder: (context, state) {
-          if (_isLoading || state is DashboardLoading) {
+          if (state is DashboardLoading || state is DashboardInitial) {
             return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppTheme.neonCyan,
+                    ),
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 20),
                   Text(
-                    'Loading your health dashboard...',
+                    'SYNCHRONIZING TELEMETRY STREAM...',
                     style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.neonCyan,
+                      letterSpacing: 1.5,
                     ),
                   ),
                 ],
@@ -246,169 +282,148 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: AppTheme.dangerRed,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Error Loading Dashboard',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: AppTheme.cyberCardDecoration(
+                    borderColor: AppTheme.neonCrimson.withOpacity(0.5),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        size: 52,
+                        color: AppTheme.neonCrimson,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      state.message,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF64748B)),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () {
-                        _isLoading = true;
-                        _isInitialLoad = true;
-                        _isLoadingData = false;
-                        _loadDashboardData();
-                      },
-                      child: const Text('Retry'),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      const Text(
+                        'TELEMETRY LINK INTERRUPTED',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        state.message,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          _isLoadingData = false;
+                          _loadDashboardData();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.neonCyan,
+                          foregroundColor: AppTheme.obsidianBase,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'RECONNECT TELEMETRY',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
           }
 
           if (state is DashboardLoaded) {
-            if (_isInitialLoad) {
-              _isInitialLoad = false;
-              _isLoading = false;
-            }
-            
             return RefreshIndicator(
+              color: AppTheme.cyberCyan,
+              backgroundColor: AppTheme.darkCard,
               onRefresh: () async {
                 _isLoadingData = false;
                 _loadDashboardData();
               },
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 90.0),
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Greeting Section
-                    Text(
-                      '$greeting,',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w300,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    Text(
-                      userName,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    // 1. Warm Greeting & Health Status
+                    _buildGreetingHeader(context, greeting, userName),
+                    const SizedBox(height: 18),
 
-                    // Health Score Card
+                    // 2. Hero Daily Vitality Score Card
                     HealthScoreCard(
                       healthScore: state.healthScore,
                       onTap: () {
                         _showScoreDetails(context, state.healthScore);
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    // Today's Focus Card
+                    // 3. Today's Essential Male Biomarkers (HR, Steps, Sleep, Vascular)
+                    _buildCoreBiomarkersCard(context, state, userId),
+                    const SizedBox(height: 18),
+
+                    // 4. Today's Health Directive
                     TodayFocusCard(
                       focus: state.todayFocus,
                       onActionTap: (action) {
                         _handleFocusAction(context, action);
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    // Quick Stats Row
-                    _buildQuickStatsRow(context, onboardingState),
-                    const SizedBox(height: 20),
-
-                    // Abnormal Alerts
-                    if (state.abnormalMetrics.isNotEmpty)
+                    // 5. Abnormal Health Alerts (if any)
+                    if (state.abnormalMetrics.isNotEmpty) ...[
                       AbnormalAlerts(
                         alerts: state.abnormalMetrics,
                         onAlertTap: (alert) {
                           _showAlertDetails(context, alert, userId);
                         },
                       ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 18),
+                    ],
 
-                    // ✅ FIXED: Mood Insights Card with null safety
-                    _buildMoodInsightsCard(context, state.moodTrends),
-                    const SizedBox(height: 16),
-
-                    // Health Integrations
-                    _buildHealthIntegrations(context, healthSyncState),
-                    const SizedBox(height: 24),
-
-                    // Quick Metric Entry
+                    // 6. Quick Health Log Hub
                     QuickMetricEntry(
                       userId: userId,
                       onMetricAdded: () {
                         _loadDashboardData();
                       },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 18),
 
-                    // Metrics Grid
-                    MetricsGrid(
-                      metrics: state.recentMetrics,
-                      onMetricTap: (type) {
-                        context.go(
-                          '/metric-detail',
-                          extra: {
-                            'userId': userId,
-                            'metricType': type,
-                          },
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Metric Chart
+                    // 7. Weekly Vitals Progression
                     MetricChart(
                       metrics: state.allMetrics,
                       selectedPeriod: state.trendDepressed,
                       onPeriodChanged: (period) {
                         context.read<DashboardBloc>().add(
-                          SelectTimeRange(trendDepressed: period)
+                          SelectTimeRange(trendDepressed: period),
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    // Lifestyle & Stress Card
-                    _buildLifestyleCard(context, onboardingState),
-                    const SizedBox(height: 12),
-
-                    // Medications Card
-                    _buildMedicationsCard(context, onboardingState),
-                    const SizedBox(height: 12),
-
-                    // Emergency Contact Card
-                    if (onboardingState.emergencyContact != null)
-                      _buildEmergencyContactCard(context, onboardingState),
-                    
-                    const SizedBox(height: 20),
+                    // 8. Recent Health Biomarkers (if any)
+                    if (state.recentMetrics.isNotEmpty) ...[
+                      MetricsGrid(
+                        metrics: state.recentMetrics,
+                        onMetricTap: (type) {
+                          context.go(
+                            '/metric-detail',
+                            extra: {'userId': userId, 'metricType': type},
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                    ],
                   ],
                 ),
               ),
@@ -416,36 +431,57 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
           }
 
           return const Center(
-            child: CircularProgressIndicator(),
+            child: CircularProgressIndicator(color: AppTheme.cyberCyan),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddMetricScreen(userId: userId),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.cyberCyan.withOpacity(0.35),
+              blurRadius: 14,
+              spreadRadius: 1,
             ),
-          ).then((result) {
-            if (result == true) {
-              debugPrint('🔄 Metric added, refreshing dashboard...');
-              _isLoadingData = false;
-              _lastLoadedUserId = null;
-              _loadDashboardData();
-            }
-          });
-        },
-        child: const Icon(Icons.add),
-        tooltip: 'Add Health Metric',
+          ],
+        ),
+        child: FloatingActionButton(
+          heroTag: 'main_dashboard_add_metric_fab',
+          backgroundColor: AppTheme.cyberCyan,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddMetricScreen(userId: userId),
+              ),
+            ).then((result) {
+              if (result == true) {
+                debugPrint('🔄 Metric added, refreshing dashboard...');
+                _isLoadingData = false;
+                _lastLoadedUserId = null;
+                _loadDashboardData();
+              }
+            });
+          },
+          tooltip: 'Add Health Metric',
+          child: const Icon(Icons.add, size: 28),
+        ),
       ),
     );
   }
 
   // ============= App Bar =============
-  AppBar _buildAppBar(BuildContext context, String userName, String userEmail) {
+  AppBar _buildAppBar(
+    BuildContext context,
+    String userName,
+    String userEmail,
+    String userId,
+  ) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.darkCanvas,
       elevation: 0,
       centerTitle: false,
       title: Row(
@@ -454,19 +490,25 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFF4F46E5).withOpacity(0.3),
-                width: 2,
+                color: AppTheme.cyberCyan.withOpacity(0.6),
+                width: 1.5,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.cyberCyan.withOpacity(0.2),
+                  blurRadius: 10,
+                ),
+              ],
             ),
             child: CircleAvatar(
-              backgroundColor: const Color(0xFF4F46E5),
-              radius: 22,
+              backgroundColor: AppTheme.darkCard,
+              radius: 20,
               child: Text(
                 userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  color: AppTheme.cyberCyan,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
                 ),
               ),
             ),
@@ -479,17 +521,20 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
                 Text(
                   userName,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                    color: Colors.white,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  userEmail,
+                  userEmail.isNotEmpty
+                      ? userEmail
+                      : 'CLINICAL VITALITY ACTIVE',
                   style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF64748B),
+                    fontSize: 10,
+                    color: AppTheme.textMuted,
+                    letterSpacing: 0.5,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -500,13 +545,21 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: Color(0xFF64748B)),
+          icon: const Icon(
+            Icons.notifications_outlined,
+            color: AppTheme.cyberCyan,
+            size: 22,
+          ),
           onPressed: () {},
         ),
         PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF64748B)),
+          color: AppTheme.darkCard,
+          icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMuted),
           onSelected: (value) {
             if (value == 'logout') {
+              context.read<DashboardBloc>().add(const ClearDashboardData());
+              context.read<FirestoreService>().clearUserCache(userId);
+              UnifiedDashboardScreen.resetState();
               context.read<AuthBloc>().add(AuthSignOutRequested());
               context.go('/');
             }
@@ -516,9 +569,16 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
               value: 'profile',
               child: Row(
                 children: [
-                  Icon(Icons.person_outline, size: 20),
+                  Icon(
+                    Icons.person_outline,
+                    size: 18,
+                    color: AppTheme.cyberCyan,
+                  ),
                   SizedBox(width: 12),
-                  Text('Profile'),
+                  Text(
+                    'Clinical Profile',
+                    style: TextStyle(color: Colors.white, fontSize: 13),
+                  ),
                 ],
               ),
             ),
@@ -526,20 +586,30 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
               value: 'settings',
               child: Row(
                 children: [
-                  Icon(Icons.settings_outlined, size: 20),
+                  Icon(Icons.tune_rounded, size: 18, color: AppTheme.cyberCyan),
                   SizedBox(width: 12),
-                  Text('Settings'),
+                  Text(
+                    'Vitality Settings',
+                    style: TextStyle(color: Colors.white, fontSize: 13),
+                  ),
                 ],
               ),
             ),
-            const PopupMenuDivider(),
+            const PopupMenuDivider(color: AppTheme.darkBorder),
             const PopupMenuItem(
               value: 'logout',
               child: Row(
                 children: [
-                  Icon(Icons.logout_rounded, color: Colors.red, size: 20),
+                  Icon(
+                    Icons.power_settings_new_rounded,
+                    color: AppTheme.neonRed,
+                    size: 18,
+                  ),
                   SizedBox(width: 12),
-                  Text('Logout', style: TextStyle(color: Colors.red)),
+                  Text(
+                    'Sign Out',
+                    style: TextStyle(color: AppTheme.neonRed, fontSize: 13),
+                  ),
                 ],
               ),
             ),
@@ -551,594 +621,310 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
 
   // ============= Helper Widgets =============
 
-  // ✅ FIXED: Mood Insights Card with null safety
-  Widget _buildMoodInsightsCard(BuildContext context, Map<String, dynamic>? moodTrends) {
-    // Handle null or empty case
-    if (moodTrends == null || moodTrends.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  Widget _buildGreetingHeader(
+    BuildContext context,
+    String greeting,
+    String userName,
+  ) {
+    final now = DateTime.now();
+    final dateStr = DateFormat('EEEE, MMMM d').format(now);
 
-    // Safely extract values with defaults
-    final trend = moodTrends['trend'] as String? ?? 'stable';
-    final average = moodTrends['average'] as double? ?? 0.0;
-    final riskLevel = moodTrends['riskLevel'] as String? ?? 'low';
-    final insights = moodTrends['insights'] as List<String>? ?? [];
-
-    Color trendColor;
-    String trendIcon;
-    if (trend == 'improving') {
-      trendColor = AppTheme.healthyGreen;
-      trendIcon = '📈';
-    } else if (trend == 'declining') {
-      trendColor = AppTheme.dangerRed;
-      trendIcon = '📉';
-    } else {
-      trendColor = AppTheme.warningOrange;
-      trendIcon = '➡️';
-    }
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3E8FF),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.psychology_rounded,
-                    color: Color(0xFF7C3AED),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Mood Insights',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Text(
-                            'Average: ${average.toStringAsFixed(1)}/10',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.textMedium,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: riskLevel == 'high' 
-                                  ? Colors.red.shade100 
-                                  : riskLevel == 'moderate'
-                                      ? Colors.orange.shade100
-                                      : Colors.green.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              riskLevel.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: riskLevel == 'high'
-                                    ? Colors.red
-                                    : riskLevel == 'moderate'
-                                        ? Colors.orange
-                                        : Colors.green,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  '$trendIcon Trend: ${trend.toUpperCase()}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: trendColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (insights.isNotEmpty)
-              ...insights.map((insight) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '• ',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textMedium,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          insight,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: insight.contains('⚠️') 
-                                ? Colors.red 
-                                : AppTheme.textMedium,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                onPressed: () {
-                  context.go('/mood-history?userId=${widget.userId}');
-                },
-                icon: const Icon(Icons.mood, size: 16),
-                label: const Text('View Mood History'),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF7C3AED),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickStatsRow(BuildContext context, OnboardingState state) {
-    final lifeStage = state.detectedLifeStage;
-    
-    return Row(
-      children: [
-        _buildQuickStat(
-          context,
-          icon: Icons.calendar_today_rounded,
-          value: lifeStage.name,
-          label: 'Life Stage',
-          color: lifeStage.badgeColor,
-        ),
-        const SizedBox(width: 12),
-        _buildQuickStat(
-          context,
-          icon: Icons.fitness_center_rounded,
-          value: state.lifestyle.exercise.name,
-          label: 'Exercise',
-          color: const Color(0xFF0D9488),
-        ),
-        const SizedBox(width: 12),
-        _buildQuickStat(
-          context,
-          icon: Icons.medication_rounded,
-          value: state.medications.length.toString(),
-          label: 'Medications',
-          color: const Color(0xFF8B5CF6),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickStat(
-    BuildContext context, {
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: Color(0xFF0F172A),
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Color(0xFF94A3B8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHealthIntegrations(BuildContext context, HealthSyncState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Health Integrations',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
-              ),
+            Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: AppTheme.bioEmerald,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.bioEmerald.withOpacity(0.6),
+                        blurRadius: 6,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'HEALTH STATUS // OPTIMAL',
+                  style: TextStyle(
+                    color: AppTheme.bioEmerald.withOpacity(0.95),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
             ),
-            TextButton.icon(
-              onPressed: () {
-                _loadDashboardData();
-              },
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('Refresh'),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF4F46E5),
+            Text(
+              dateStr,
+              style: const TextStyle(
+                color: AppTheme.textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildHealthSourceCard(
-                title: 'Apple Health',
-                icon: Icons.apple_rounded,
-                isConnected: state.isAppleHealthAuthorized,
-                lastSync: state.appleHealthLastSync,
-                isLoading: state.isLoading,
-                onConnect: () {},
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildHealthSourceCard(
-                title: 'Google Fit',
-                icon: Icons.fitness_center_rounded,
-                isConnected: state.isGoogleFitAuthorized,
-                lastSync: state.googleFitLastSync,
-                isLoading: state.isLoading,
-                onConnect: () {},
-              ),
-            ),
-          ],
+        const SizedBox(height: 8),
+        Text(
+          '${greeting.toUpperCase()},',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.cyberCyan,
+            letterSpacing: 1.1,
+          ),
+        ),
+        Text(
+          userName,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            letterSpacing: 0.2,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildHealthSourceCard({
-    required String title,
-    required IconData icon,
-    required bool isConnected,
-    required DateTime? lastSync,
-    required bool isLoading,
-    required VoidCallback onConnect,
-  }) {
+  Widget _buildCoreBiomarkersCard(
+    BuildContext context,
+    DashboardLoaded dashboardState,
+    String userId,
+  ) {
+    final daily = dashboardState.todayHealthDaily;
+    final hasDailyData = daily != null;
+
+    final stepsStr = daily?.steps != null
+        ? NumberFormat.decimalPattern().format(daily!.steps)
+        : '--';
+
+    // RHR: If today's RHR has not yet finalized (e.g. intraday before nocturnal sleep computation),
+    // fallback to the most recent recorded resting HR from recentHealthDailies.
+    int? effectiveRhr = daily?.restingHeartRate;
+    if (effectiveRhr == null || effectiveRhr <= 0) {
+      for (final d in dashboardState.recentHealthDailies) {
+        if (d.restingHeartRate != null && d.restingHeartRate! > 0) {
+          effectiveRhr = d.restingHeartRate;
+          break;
+        }
+      }
+    }
+    final hrStr = effectiveRhr != null ? '$effectiveRhr' : '--';
+
+    // Sleep: If today's sleep has not yet finalized, fallback to most recent recorded sleep
+    int? effectiveSleepMinutes = (daily?.sleepMinutes != null && daily!.sleepMinutes! > 0)
+        ? daily.sleepMinutes
+        : null;
+    if (effectiveSleepMinutes == null) {
+      for (final d in dashboardState.recentHealthDailies) {
+        if (d.sleepMinutes != null && d.sleepMinutes! > 0) {
+          effectiveSleepMinutes = d.sleepMinutes;
+          break;
+        }
+      }
+    }
+    final sleepStr = effectiveSleepMinutes != null
+        ? '${(effectiveSleepMinutes / 60).toStringAsFixed(1)}h'
+        : '--';
+
+    // Fourth metric: Calories (primary if > 0) or SpO2
+    final hasCalories = (daily?.calories != null && daily!.calories! > 0);
+    int? effectiveCalories = hasCalories ? daily!.calories : null;
+    if (effectiveCalories == null) {
+      for (final d in dashboardState.recentHealthDailies) {
+        if (d.calories != null && d.calories! > 0) {
+          effectiveCalories = d.calories;
+          break;
+        }
+      }
+    }
+
+    double? effectiveSpo2 = daily?.avgSpo2;
+    if (effectiveSpo2 == null) {
+      for (final d in dashboardState.recentHealthDailies) {
+        if (d.avgSpo2 != null && d.avgSpo2! > 0) {
+          effectiveSpo2 = d.avgSpo2;
+          break;
+        }
+      }
+    }
+
+    final isCalories = effectiveCalories != null && effectiveCalories > 0;
+    final fourthStr = isCalories
+        ? NumberFormat.decimalPattern().format(effectiveCalories)
+        : (effectiveSpo2 != null ? '${effectiveSpo2.toStringAsFixed(0)}%' : '--');
+    final fourthLabel = isCalories ? 'CALORIES' : 'SPO2';
+    final fourthUnit = isCalories ? 'kcal' : '';
+    final fourthIcon = isCalories ? Icons.local_fire_department_rounded : Icons.air_rounded;
+    final fourthColor = isCalories ? AppTheme.neonAmber : AppTheme.bioEmerald;
+
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isConnected ? const Color(0xFF0D9488) : const Color(0xFFE2E8F0),
-          width: isConnected ? 2 : 1,
-        ),
-        boxShadow: [
-          if (isConnected)
-            BoxShadow(
-              color: const Color(0xFF0D9488).withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-        ],
+      padding: const EdgeInsets.all(18),
+      decoration: AppTheme.cyberCardDecoration(
+        borderColor: AppTheme.darkBorder,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isConnected 
-                      ? const Color(0xFF0D9488).withOpacity(0.1) 
-                      : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon, 
-                  color: isConnected ? const Color(0xFF0D9488) : const Color(0xFF94A3B8),
-                  size: 20,
+              const Row(
+                children: [
+                  Icon(
+                    Icons.monitor_heart_outlined,
+                    color: AppTheme.cyberCyan,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'CORE MALE VITALITY METRICS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.cyberCyan,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () {
+                  context.read<HealthSyncBloc>().add(
+                    RequestGoogleFitEvent(userId),
+                  );
+                  _loadDashboardData();
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.sync_rounded,
+                        size: 13,
+                        color: hasDailyData ? AppTheme.bioEmerald : AppTheme.textMuted,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        hasDailyData ? 'SYNCED' : 'SYNC',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: hasDailyData ? AppTheme.bioEmerald : AppTheme.textMuted,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const Spacer(),
-              if (isLoading)
-                const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF4F46E5),
-                  ),
-                )
-              else
-                Icon(
-                  isConnected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                  color: isConnected ? const Color(0xFF0D9488) : const Color(0xFF94A3B8),
-                  size: 18,
-                ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold, 
-              fontSize: 14,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            isConnected && lastSync != null
-                ? 'Last sync: ${DateFormat('MMM d, hh:mm a').format(lastSync)}'
-                : 'Not Connected',
-            style: TextStyle(
-              fontSize: 11,
-              color: isConnected ? const Color(0xFF0D9488) : const Color(0xFF64748B),
-              fontWeight: isConnected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: isConnected ? null : onConnect,
-              style: TextButton.styleFrom(
-                backgroundColor: isConnected 
-                    ? const Color(0xFF0D9488).withOpacity(0.05) 
-                    : const Color(0xFF4F46E5).withOpacity(0.1),
-                foregroundColor: isConnected ? const Color(0xFF0D9488) : const Color(0xFF4F46E5),
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildVitalPill(
+                value: hrStr,
+                unit: 'bpm',
+                label: 'RESTING HR',
+                icon: Icons.favorite_rounded,
+                color: AppTheme.neonRed,
               ),
-              child: Text(
-                isConnected ? 'Connected' : 'Connect',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+              const SizedBox(width: 8),
+              _buildVitalPill(
+                value: stepsStr,
+                unit: 'steps',
+                label: 'MOVEMENT',
+                icon: Icons.directions_walk_rounded,
+                color: AppTheme.cyberCyan,
               ),
-            ),
+              const SizedBox(width: 8),
+              _buildVitalPill(
+                value: sleepStr,
+                unit: '',
+                label: 'SLEEP',
+                icon: Icons.nightlight_round,
+                color: AppTheme.neonPurple,
+              ),
+              const SizedBox(width: 8),
+              _buildVitalPill(
+                value: fourthStr,
+                unit: fourthUnit,
+                label: fourthLabel,
+                icon: fourthIcon,
+                color: fourthColor,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLifestyleCard(BuildContext context, OnboardingState state) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+  Widget _buildVitalPill({
+    required String value,
+    required String unit,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+        decoration: BoxDecoration(
+          color: AppTheme.darkSurface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.darkBorder),
+        ),
         child: Column(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.psychology_rounded, 
-                    color: Color(0xFF4F46E5),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Lifestyle & Stress',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      Text(
-                        'Stress Level: ${state.lifestyle.stressLevel}/10',
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildStressIndicator(state.lifestyle.stressLevel),
-              ],
+            Icon(icon, size: 16, color: color),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
+            if (unit.isNotEmpty) ...[
+              Text(
+                unit,
+                style: const TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textMuted,
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _getExerciseIcon(state.lifestyle.exercise.name),
-                    size: 16,
-                    color: const Color(0xFF475569),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Exercise: ${state.lifestyle.exercise.name}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF475569),
-                    ),
-                  ),
-                ],
+            ],
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textMuted,
+                letterSpacing: 0.4,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMedicationsCard(BuildContext context, OnboardingState state) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE6FFFA),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.medication_rounded, 
-            color: Color(0xFF0D9488),
-          ),
-        ),
-        title: const Text(
-          'Tracked Medications',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          state.medications.isEmpty
-              ? 'No active medications registered'
-              : '${state.medications.length} medications tracked',
-          style: const TextStyle(color: Color(0xFF64748B)),
-        ),
-        trailing: state.medications.isNotEmpty
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4F46E5).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '+${state.medications.length}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF4F46E5),
-                  ),
-                ),
-              )
-            : null,
-        onTap: () {},
-      ),
-    );
-  }
-
-  Widget _buildEmergencyContactCard(BuildContext context, OnboardingState state) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEF2F2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.contact_phone_rounded, 
-            color: Colors.redAccent,
-          ),
-        ),
-        title: Text(
-          'Emergency Contact: ${state.emergencyContact?.name ?? ''}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          '${state.emergencyContact?.relationship ?? ''} • ${state.emergencyContact?.phoneNumber ?? ''}',
-          style: const TextStyle(color: Color(0xFF64748B)),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.phone_forwarded_rounded, color: Colors.redAccent),
-          onPressed: () {},
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStressIndicator(int stressLevel) {
-    Color color;
-    if (stressLevel <= 3) {
-      color = const Color(0xFF0D9488);
-    } else if (stressLevel <= 6) {
-      color = const Color(0xFFFF9800);
-    } else {
-      color = const Color(0xFFF44336);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        '$stressLevel/10',
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
         ),
       ),
     );
@@ -1150,61 +936,76 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppTheme.obsidianCard,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Health Score Details',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              const Row(
+                children: [
+                  Icon(
+                    Icons.analytics_outlined,
+                    color: AppTheme.neonCyan,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'CLINICAL TELEMETRY BREAKDOWN',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.neonCyan,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               ...score.categoryScores.entries.map((entry) {
                 return ListTile(
-                  title: Text(_getCategoryLabel(entry.key)),
-                  trailing: Text('${entry.value}/100'),
+                  title: Text(
+                    _getCategoryLabel(entry.key),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  trailing: Text(
+                    '${entry.value} / 100',
+                    style: const TextStyle(
+                      color: AppTheme.neonCyan,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   leading: _getScoreIndicator(entry.value),
                 );
-              }).toList(),
-              const Divider(),
+              }),
+              const Divider(color: AppTheme.obsidianBorder),
               ListTile(
                 title: const Text(
-                  'Total Score',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  'COMPOSITE VITALITY INDEX',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.8,
+                  ),
                 ),
                 trailing: Text(
-                  '${score.score}/100',
+                  '${score.score} / 100',
                   style: const TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.neonEmerald,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Recommendations',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ...score.recommendations.map((rec) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.sailing, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(rec)),
-                    ],
-                  ),
-                );
-              }).toList(),
               const SizedBox(height: 16),
             ],
           ),
@@ -1213,12 +1014,29 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
     );
   }
 
-  void _showAlertDetails(BuildContext context, AbnormalMetrices alert, String userId) {
+  void _showAlertDetails(
+    BuildContext context,
+    AbnormalMetrices alert,
+    String userId,
+  ) {
     showDialog(
       context: context,
       builder: (context) {
+        final sevColor = _getSeverityColor(alert.alertSevirity);
         return AlertDialog(
-          title: Text('${_getMetricLabel(alert.metric.type)} Alert'),
+          backgroundColor: AppTheme.obsidianCard,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: sevColor.withOpacity(0.5)),
+          ),
+          title: Text(
+            '${_getMetricLabel(alert.metric.type).toUpperCase()} ALERT',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1226,43 +1044,60 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
               Text(
                 alert.alertmessage,
                 style: TextStyle(
-                  color: _getSeverityColor(alert.alertSevirity),
+                  color: sevColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Telemetry: ${alert.metric.displayValue} ${alert.metric.unit}',
+                style: const TextStyle(
+                  color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text('Value: ${alert.metric.displayValue} ${alert.metric.unit}'),
-              const SizedBox(height: 8),
-              Text('Time: ${_formatDate(alert.metric.timeStamp)}'),
-              if (alert.recommendation != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Recommendation: ${alert.recommendation}',
-                    style: const TextStyle(
-                      fontStyle: FontStyle.italic,
-                    ),
+              const SizedBox(height: 4),
+              Text(
+                'Recorded: ${_formatDate(alert.metric.timeStamp)}',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+              ),
+              if (alert.recommendation != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Clinical Protocol: ${alert.recommendation}',
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
                   ),
                 ),
+              ],
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
+              child: const Text(
+                'DISMISS',
+                style: TextStyle(color: AppTheme.textMuted),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
                 context.go(
                   '/metric-detail',
-                  extra: {
-                    'userId': userId,
-                    'metricType': alert.metric.type,
-                  },
+                  extra: {'userId': userId, 'metricType': alert.metric.type},
                 );
               },
-              child: const Text('View Details'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.neonCyan,
+                foregroundColor: AppTheme.obsidianBase,
+              ),
+              child: const Text(
+                'INVESTIGATE',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
           ],
         );
@@ -1340,11 +1175,17 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
 
   Widget _getScoreIndicator(int score) {
     Color color;
-    if (score >= 80) color = Colors.green;
-    else if (score >= 70) color = Colors.green.shade300;
-    else if (score >= 50) color = Colors.orange;
-    else if (score >= 30) color = Colors.red.shade400;
-    else color = Colors.red.shade900;
+    if (score >= 80) {
+      color = Colors.green;
+    } else if (score >= 70) {
+      color = Colors.green.shade300;
+    } else if (score >= 50) {
+      color = Colors.orange;
+    } else if (score >= 30) {
+      color = Colors.red.shade400;
+    } else {
+      color = Colors.red.shade900;
+    }
 
     return CircleAvatar(
       radius: 12,
@@ -1362,22 +1203,5 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-
-  IconData _getExerciseIcon(String exercise) {
-    switch (exercise.toLowerCase()) {
-      case 'running':
-        return Icons.directions_run_rounded;
-      case 'cycling':
-        return Icons.directions_bike_rounded;
-      case 'swimming':
-        return Icons.pool_rounded;
-      case 'walking':
-        return Icons.directions_walk_rounded;
-      case 'yoga':
-        return Icons.self_improvement_rounded;
-      default:
-        return Icons.fitness_center_rounded;
-    }
   }
 }

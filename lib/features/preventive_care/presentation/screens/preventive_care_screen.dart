@@ -38,35 +38,7 @@ class _PreventiveCareScreenState extends State<PreventiveCareScreen>
   Future<void> _loadScreenings() async {
     setState(() => _isLoading = true);
     final records = await widget.repository.getScreeningRecords(widget.userId);
-
-    // If empty, generate and save clinical guidelines for this user
-    if (records.isEmpty) {
-      final guidelines = PreventiveCareEngine.generateSchedule(
-        age: widget.userAge,
-        isSmoker: widget.isSmoker,
-        hasFamilyHeartDisease: false,
-        hasFamilyCancer: false,
-      );
-
-      final now = DateTime.now();
-      for (int i = 0; i < guidelines.length; i++) {
-        final g = guidelines[i];
-        final rec = ScreeningRecord(
-          id: '${g.id}_${DateTime.now().millisecondsSinceEpoch}_$i',
-          userId: widget.userId,
-          guidelineId: g.id,
-          title: g.title,
-          dueDate: now.add(Duration(days: (i + 1) * 21)),
-          isCompleted: false,
-        );
-        await widget.repository.saveScreeningRecord(rec);
-      }
-      final fresh = await widget.repository.getScreeningRecords(widget.userId);
-      setState(() {
-        _screenings = fresh;
-        _isLoading = false;
-      });
-    } else {
+    if (mounted) {
       setState(() {
         _screenings = records;
         _isLoading = false;
@@ -94,6 +66,13 @@ class _PreventiveCareScreenState extends State<PreventiveCareScreen>
           'Preventive Care & Screenings',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline, color: Color(0xFF10B981)),
+            tooltip: 'Add Screening',
+            onPressed: () => _showAddScreeningDialog(context),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: const Color(0xFF10B981),
@@ -102,6 +81,13 @@ class _PreventiveCareScreenState extends State<PreventiveCareScreen>
             Tab(text: 'Completed (${completed.length})'),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF10B981),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Add Screening', style: TextStyle(fontWeight: FontWeight.bold)),
+        onPressed: () => _showAddScreeningDialog(context),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
@@ -117,10 +103,45 @@ class _PreventiveCareScreenState extends State<PreventiveCareScreen>
 
   Widget _buildUpcomingList(List<ScreeningRecord> list) {
     if (list.isEmpty) {
-      return const Center(
-        child: Text(
-          'No pending screenings! You are fully up to date.',
-          style: TextStyle(color: Colors.white70),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.health_and_safety_rounded, color: Color(0xFF10B981), size: 52),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'No Screenings Scheduled',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Add your personal clinical screenings, blood tests, or doctor recommendations to track due dates.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => _showAddScreeningDialog(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Clinical Screening', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -198,6 +219,14 @@ class _PreventiveCareScreenState extends State<PreventiveCareScreen>
                         ),
                       ),
                       const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.white38, size: 20),
+                        tooltip: 'Delete Screening',
+                        onPressed: () async {
+                          await widget.repository.deleteScreeningRecord(widget.userId, record.id);
+                          _loadScreenings();
+                        },
+                      ),
                       IconButton(
                         icon: const Icon(Icons.check_circle_outline, color: Color(0xFF10B981)),
                         tooltip: 'Log Completed',
@@ -439,6 +468,163 @@ class _PreventiveCareScreenState extends State<PreventiveCareScreen>
               child: const Text('Save Record'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showAddScreeningDialog(BuildContext context) {
+    final titleController = TextEditingController();
+    final notesController = TextEditingController();
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 30));
+
+    final presets = [
+      'Comprehensive Metabolic & Lipid Panel',
+      'Blood Pressure & Cardiovascular Check',
+      'PSA / Prostate Examination',
+      'Colonoscopy / Colorectal Screening',
+      'Testicular Health Self-Exam & Ultrasound',
+      'Vision & Intraocular Pressure Test',
+      'Oral Health & Dental Exam',
+      'Skin Cancer / Full-Body Mole Check',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.add_circle_outline, color: Color(0xFF10B981)),
+                  SizedBox(width: 8),
+                  Text('Add Preventive Screening', style: TextStyle(color: Colors.white, fontSize: 16)),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'QUICK CLINICAL PRESETS',
+                        style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: presets.map((p) {
+                          return ActionChip(
+                            backgroundColor: const Color(0xFF0F172A),
+                            side: const BorderSide(color: Colors.white12),
+                            label: Text(p, style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                            onPressed: () {
+                              setDialogState(() {
+                                titleController.text = p;
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: titleController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Screening / Test Name',
+                          labelStyle: TextStyle(color: Colors.white60),
+                          hintText: 'e.g. Annual Blood Work',
+                          hintStyle: TextStyle(color: Colors.white24),
+                          filled: true,
+                          fillColor: Colors.white10,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text('DUE DATE', style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(const Duration(days: 3650)),
+                          );
+                          if (picked != null) {
+                            setDialogState(() => selectedDate = picked);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white10,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white24),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_month, color: Color(0xFF10B981), size: 18),
+                              const SizedBox(width: 10),
+                              Text(DateFormat('MMMM dd, yyyy').format(selectedDate), style: const TextStyle(color: Colors.white)),
+                              const Spacer(),
+                              const Text('Change', style: TextStyle(color: Color(0xFF10B981), fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: notesController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Physician / Facility Notes (Optional)',
+                          labelStyle: TextStyle(color: Colors.white60),
+                          filled: true,
+                          fillColor: Colors.white10,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                  onPressed: () async {
+                    if (titleController.text.trim().isNotEmpty) {
+                      final newRecord = ScreeningRecord(
+                        id: 'scr_${DateTime.now().millisecondsSinceEpoch}',
+                        userId: widget.userId,
+                        guidelineId: 'custom',
+                        title: titleController.text.trim(),
+                        dueDate: selectedDate,
+                        isCompleted: false,
+                        resultNotes: notesController.text.trim(),
+                      );
+                      await widget.repository.saveScreeningRecord(newRecord);
+                      if (mounted) {
+                        Navigator.pop(context);
+                        _loadScreenings();
+                      }
+                    }
+                  },
+                  child: const Text('Save Screening'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

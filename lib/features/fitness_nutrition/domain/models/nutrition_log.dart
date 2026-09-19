@@ -91,6 +91,30 @@ class NutritionDailyTarget {
         );
     }
   }
+
+  Map<String, dynamic> toMap() => {
+    'targetCalories': targetCalories,
+    'targetProteinGrams': targetProteinGrams,
+    'targetCarbsGrams': targetCarbsGrams,
+    'targetFatGrams': targetFatGrams,
+    'targetWaterMl': targetWaterMl,
+    'targetCalciumMg': targetCalciumMg,
+    'targetZincMg': targetZincMg,
+    'clinicalRationale': clinicalRationale,
+  };
+
+  factory NutritionDailyTarget.fromMap(Map<String, dynamic> map, {NutritionDailyTarget? fallback}) {
+    return NutritionDailyTarget(
+      targetCalories: (map['targetCalories'] as num?)?.toInt() ?? fallback?.targetCalories ?? 2300,
+      targetProteinGrams: (map['targetProteinGrams'] as num?)?.toInt() ?? fallback?.targetProteinGrams ?? 130,
+      targetCarbsGrams: (map['targetCarbsGrams'] as num?)?.toInt() ?? fallback?.targetCarbsGrams ?? 240,
+      targetFatGrams: (map['targetFatGrams'] as num?)?.toInt() ?? fallback?.targetFatGrams ?? 75,
+      targetWaterMl: (map['targetWaterMl'] as num?)?.toInt() ?? fallback?.targetWaterMl ?? 2800,
+      targetCalciumMg: (map['targetCalciumMg'] as num?)?.toInt() ?? fallback?.targetCalciumMg ?? 1000,
+      targetZincMg: (map['targetZincMg'] as num?)?.toInt() ?? fallback?.targetZincMg ?? 11,
+      clinicalRationale: (map['clinicalRationale'] as String?) ?? fallback?.clinicalRationale ?? 'Customized goal protocol',
+    );
+  }
 }
 
 class MealEntry {

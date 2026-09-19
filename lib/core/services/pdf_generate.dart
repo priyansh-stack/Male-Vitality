@@ -56,7 +56,7 @@ class PDFGenerator {
                     pw.Text(entry.value.toString()),
                   ],
                 );
-              }).toList(),
+              }),
               pw.SizedBox(height: 20),
               pw.Text(
                 'Recommendations',

@@ -36,15 +36,20 @@ jobs:
       - name: Run tests
         run: flutter test
       
-      - name: Decode Google Services
+      - name: Configure Google Services
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
-            echo "Google Services configured"
-          else
-            echo '{"project_info":{},"client":[]}' > android/app/google-services.json
+            if echo "$GOOGLE_SERVICES_JSON" | base64 --decode > /dev/null 2>&1 && [[ "$(echo "$GOOGLE_SERVICES_JSON" | base64 --decode 2>/dev/null)" == *"project_info"* ]]; then
+              echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
+              echo "Decoded base64 GOOGLE_SERVICES_JSON"
+            else
+              echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+              echo "Wrote raw JSON GOOGLE_SERVICES_JSON"
+            fi
+          elif [ -f "android/app/google-services.json" ] && grep -q "project_id" android/app/google-services.json; then
+            echo "Using existing repository android/app/google-services.json"
           fi
       
       - name: Fix minSdkVersion for health plugin
@@ -67,18 +72,8 @@ jobs:
             exit 1
           fi
       
-      - name: Build Debug APK
-        run: flutter build apk --debug
-      
       - name: Build Release APK
         run: flutter build apk --release
-      
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Male-Vitality-Debug.apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 14
       
       - name: Upload Release APK
         uses: actions/upload-artifact@v4

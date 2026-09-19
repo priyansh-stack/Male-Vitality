@@ -57,11 +57,6 @@ class ExerciseProgress extends Equatable {
     };
   }
 
-  // double getCompletionPercentage {
-  //   if (totalSteps == 0) return 0.0;
-  //   return stepsCompleted / totalSteps;
-  // }
-
   @override
   List<Object?> get props => [
     exerciseId, userId, startedAt, completedAt, stepsCompleted,

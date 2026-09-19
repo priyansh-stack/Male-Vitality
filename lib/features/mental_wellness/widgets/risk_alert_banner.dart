@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/mental_wellness/risk_alert.dart';
-import '../../../core/theme/app_theme.dart';
 
 class RiskAlertBanner extends StatelessWidget {
   final RiskAlert alert;

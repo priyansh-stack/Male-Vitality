@@ -7,25 +7,25 @@ abstract class DashboardEvent extends Equatable {
   List<Object> get props => [];
 }
 
-class LoadDashboardData extends DashboardEvent {  
+class LoadDashboardData extends DashboardEvent {
   final String userId;
-  
+
   const LoadDashboardData({required this.userId});
-  
+
   @override
   List<Object> get props => [userId];
 }
 
-class RefreshDashboard extends DashboardEvent {  
+class RefreshDashboard extends DashboardEvent {
   final String userId;
 
   const RefreshDashboard({required this.userId});
-  
+
   @override
   List<Object> get props => [userId];
 }
 
-class LoadMetricTrend extends DashboardEvent {  
+class LoadMetricTrend extends DashboardEvent {
   final String userId;
   final MetricType metricType;
   final TrendDepressed trendDepressed;
@@ -35,23 +35,23 @@ class LoadMetricTrend extends DashboardEvent {
     required this.metricType,
     required this.trendDepressed,
   });
-  
+
   @override
   List<Object> get props => [userId, metricType, trendDepressed];
 }
 
 class AddHealthMetricEvent extends DashboardEvent {
   final HealthMetric metric;
-  
+
   const AddHealthMetricEvent({required this.metric});
 
   @override
   List<Object> get props => [metric];
 }
 
-class SyncWearableDataEvent extends DashboardEvent {  
+class SyncWearableDataEvent extends DashboardEvent {
   final String userId;
-  final WeareableType wearableType;  
+  final WeareableType wearableType;
 
   const SyncWearableDataEvent({
     required this.userId,
@@ -96,10 +96,27 @@ class ToggleMetricVisibility extends DashboardEvent {
 }
 
 class SelectTimeRange extends DashboardEvent {
-  final TrendDepressed trendDepressed;  
+  final TrendDepressed trendDepressed;
 
   const SelectTimeRange({required this.trendDepressed});
 
   @override
   List<Object> get props => [trendDepressed];
+}
+
+class ClearDashboardData extends DashboardEvent {
+  const ClearDashboardData();
+
+  @override
+  List<Object> get props => [];
+}
+
+class HealthDailyUpdated extends DashboardEvent {
+  final HealthDaily? todayDaily;
+  final List<HealthDaily>? recentDailies;
+
+  const HealthDailyUpdated({this.todayDaily, this.recentDailies});
+
+  @override
+  List<Object> get props => [todayDaily ?? '', recentDailies ?? const []];
 }

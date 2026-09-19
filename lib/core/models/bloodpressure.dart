@@ -17,7 +17,7 @@ class Bloodpressure extends Equatable {
 
   bool get isValid => systolic > 0 && systolic < 300 && diastolic > 0 && diastolic < 200;
 
-  BloodPresureCategory get Category {
+  BloodPresureCategory get category {
     if (systolic < 120 && diastolic < 80) return BloodPresureCategory.normal;
     if (systolic < 130 && diastolic < 80) return BloodPresureCategory.elevated;
     if (systolic < 140 && diastolic < 90) return BloodPresureCategory.hypertensionStage1;

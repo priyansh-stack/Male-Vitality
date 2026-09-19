@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/user_profile.dart';
 import '../../services/firestore_service.dart';
 import 'onboarding_event.dart';
@@ -18,7 +19,7 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
     on<UpdateLifestyleFactorsEvent>(_onUpdateLifestyleFactors);
     on<SaveEmergencyContactEvent>(_onSaveEmergencyContact);
     on<CompleteOnboardingEvent>(_onCompleteOnboarding);
-    on<LoadSavedProfile>(_onLoadSavedProfile); // ✅ NEW EVENT
+    on<LoadSavedProfile>(_onLoadSavedProfile);
   }
 
   void _onStarted(OnboardingStarted event, Emitter<OnboardingState> emit) {
@@ -94,17 +95,46 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
     emit(state.copyWith(emergencyContact: event.contact));
   }
 
-  //  Load saved profile from Firestore
+  // Load saved profile with local SharedPreferences cache first
   Future<void> _onLoadSavedProfile(
     LoadSavedProfile event,
     Emitter<OnboardingState> emit,
   ) async {
     try {
-      debugPrint(' Loading saved profile for user: ${event.uid}');
+      debugPrint('⚡ Loading saved profile for user: ${event.uid}');
+      final prefs = await SharedPreferences.getInstance();
+      final isLocallyComplete = prefs.getBool('onboarding_completed_${event.uid}') ?? false;
+      final isOnboarded = await _firestoreService.isMaleVitalityOnboarded(event.uid);
+      if (!isOnboarded) {
+        debugPrint('ℹ️ User has not completed Male Vitality onboarding (isMaleVitalityOnboarded: false)');
+        await prefs.remove('onboarding_completed_${event.uid}');
+        await prefs.remove('onboarding_completed_global');
+        emit(state.copyWith(
+          completedProfile: null,
+          step: 0,
+        ));
+        return;
+      }
+
+      if (isLocallyComplete && state.completedProfile == null) {
+        final cachedName = prefs.getString('user_name_${event.uid}') ?? 'User';
+        debugPrint('⚡ Local cache indicates onboarding completed for ${event.uid}');
+        emit(state.copyWith(
+          step: 5,
+          displayName: cachedName,
+        ));
+      }
+
       final profile = await _firestoreService.getUserProfile(event.uid);
       
       if (profile != null && profile.onboardingCompleted) {
-        debugPrint(' Profile loaded successfully');
+        debugPrint(' Profile loaded successfully from Firestore');
+        await prefs.setBool('onboarding_completed_${event.uid}', true);
+        await prefs.setBool('onboarding_completed_global', true);
+        if (profile.displayName.isNotEmpty) {
+          await prefs.setString('user_name_${event.uid}', profile.displayName);
+        }
+
         emit(state.copyWith(
           completedProfile: profile,
           step: 5,
@@ -116,19 +146,23 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
           lifestyle: profile.lifestyle,
           emergencyContact: profile.emergencyContact,
         ));
-      } else {
-        debugPrint(' No completed profile found');
+      } else if (!isLocallyComplete) {
+        debugPrint('ℹ️ No completed profile found');
         emit(state.copyWith(
           completedProfile: null,
           step: 0,
         ));
       }
     } catch (e) {
-      debugPrint(' Error loading saved profile: $e');
-      emit(state.copyWith(
-        errorMessage: e.toString(),
-        completedProfile: null,
-      ));
+      debugPrint('⚠️ Error loading saved profile: $e');
+      final prefs = await SharedPreferences.getInstance();
+      final isLocallyComplete = prefs.getBool('onboarding_completed_${event.uid}') ?? false;
+      if (!isLocallyComplete) {
+        emit(state.copyWith(
+          errorMessage: e.toString(),
+          completedProfile: null,
+        ));
+      }
     }
   }
 
@@ -163,6 +197,14 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
         updatedAt: DateTime.now(),
       );
 
+      // 1. Write to local device storage immediately
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_completed_${event.uid}', true);
+      await prefs.setBool('onboarding_completed_global', true);
+      await prefs.setString('user_name_${event.uid}', profile.displayName);
+      await prefs.setString('user_life_stage_${event.uid}', lifeStage.name);
+
+      // 2. Persist to Firestore Cloud
       await _firestoreService.saveUserProfile(profile);
 
       emit(state.copyWith(

@@ -46,13 +46,19 @@ app.*.map.json
 
 # Firebase secrets and private configs
 **/android/app/google-services.json
+android/app/google-services.json
+google-services.json
 **/ios/Runner/GoogleService-Info.plist
+**/macos/Runner/GoogleService-Info.plist
 *.env
 *.env.*
+credentials.json
+key.properties
+*.jks
+*.keystore
 
 # Temporary debug artifacts
 *.png
 *.apk
 *.log
-
-
+temp_prefs.xml

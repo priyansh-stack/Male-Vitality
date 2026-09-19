@@ -30,6 +30,7 @@ class AudioStreamingService {
   PlayerState? get currentState => _currentState;
   Duration? get currentPosition => _currentPosition;
   Duration? get currentDuration => _currentDuration;
+  String? get currentUrl => _currentUrl;
   bool get isPlaying => _currentState == PlayerState.playing;
   bool get isPaused => _currentState == PlayerState.paused;
   bool get isStopped => _currentState == PlayerState.stopped;

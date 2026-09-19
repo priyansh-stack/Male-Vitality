@@ -23,21 +23,42 @@ class MetricsGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Latest Vitals',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.textDark,
-          ),
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: AppTheme.cyberCyan,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.cyberCyan.withOpacity(0.5),
+                    blurRadius: 6,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'RECENT HEALTH BIOMARKERS',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.cyberCyan,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 1.4,
+            childAspectRatio: 1.35,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
@@ -70,41 +91,65 @@ class MetricsGrid extends StatelessWidget {
     required bool isAbnormal,
     required VoidCallback onTap,
   }) {
-    final themeColor = isAbnormal ? AppTheme.dangerRed : AppTheme.primaryTeal;
+    final themeColor = isAbnormal ? AppTheme.neonCrimson : AppTheme.neonCyan;
     
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceWhite,
+        color: AppTheme.obsidianCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isAbnormal ? AppTheme.dangerRed.withOpacity(0.5) : AppTheme.borderLight,
+          color: isAbnormal ? AppTheme.neonCrimson.withOpacity(0.7) : AppTheme.obsidianBorder,
           width: isAbnormal ? 1.5 : 1,
         ),
+        boxShadow: [
+          if (isAbnormal)
+            BoxShadow(
+              color: AppTheme.neonCrimson.withOpacity(0.2),
+              blurRadius: 12,
+            ),
+        ],
       ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  Icon(_getMetricIcon(type), size: 18, color: themeColor),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: themeColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(_getMetricIcon(type), size: 16, color: themeColor),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _getMetricLabel(type),
+                      _getMetricLabel(type).toUpperCase(),
                       style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textMedium,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textMuted,
+                        letterSpacing: 0.8,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (isAbnormal)
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppTheme.neonCrimson,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                 ],
               ),
               Column(
@@ -118,17 +163,18 @@ class MetricsGrid extends StatelessWidget {
                         value,
                         style: TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: isAbnormal ? AppTheme.dangerRed : AppTheme.textDark,
+                          fontWeight: FontWeight.w900,
+                          color: isAbnormal ? AppTheme.neonCrimson : Colors.white,
+                          letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         unit,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textMuted,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isAbnormal ? AppTheme.neonCrimson.withOpacity(0.8) : AppTheme.neonCyan,
                         ),
                       ),
                     ],
@@ -136,7 +182,11 @@ class MetricsGrid extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     _formatTime(timestamp),
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),

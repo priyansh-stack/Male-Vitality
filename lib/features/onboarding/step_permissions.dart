@@ -10,6 +10,7 @@ import '../../core/bloc/health_sync/health_sync_state.dart';
 import '../../core/bloc/onboarding/onboarding_bloc.dart';
 import '../../core/bloc/onboarding/onboarding_event.dart';
 import '../../core/bloc/onboarding/onboarding_state.dart';
+import '../../core/theme/app_theme.dart';
 
 class StepPermissions extends StatefulWidget {
   const StepPermissions({super.key});
@@ -29,121 +30,175 @@ class _StepPermissionsState extends State<StepPermissions> {
       builder: (context, healthState) {
         return BlocBuilder<OnboardingBloc, OnboardingState>(
           builder: (context, onboardingState) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Permissions & Integrations',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Connect Apple Health or Google Fit to automatically synchronize daily activity and vital signs.',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-                  ),
-                  const SizedBox(height: 24),
+            return Scaffold(
+              backgroundColor: AppTheme.darkCanvas,
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header Badge
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cyberCyan.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppTheme.cyberCyan.withValues(alpha: 0.4)),
+                          ),
+                          child: const Text(
+                            'STAGE 04 // SENSOR AUTHORIZATION',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.cyberCyan,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
 
-                  // Apple Health Card
-                  _buildIntegrationCard(
-                    context: context,
-                    title: 'Apple Health',
-                    subtitle: 'Sync Steps, Heart Rate, Sleep & Activity',
-                    icon: Icons.apple_rounded,
-                    color: Colors.black,
-                    isConnected: healthState.isAppleHealthAuthorized,
-                    lastSync: healthState.appleHealthLastSync,
-                    isLoading: healthState.isLoading,
-                    onToggle: () {
-                      if (uid.isNotEmpty) {
-                        context.read<HealthSyncBloc>().add(RequestAppleHealthEvent(uid));
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Google Fit Card
-                  _buildIntegrationCard(
-                    context: context,
-                    title: 'Google Fit',
-                    subtitle: 'Sync Fitness Metrics, Sleep & Vitals',
-                    icon: Icons.fitness_center_rounded,
-                    color: const Color(0xFF4285F4),
-                    isConnected: healthState.isGoogleFitAuthorized,
-                    lastSync: healthState.googleFitLastSync,
-                    isLoading: healthState.isLoading,
-                    onToggle: () {
-                      if (uid.isNotEmpty) {
-                        context.read<HealthSyncBloc>().add(RequestGoogleFitEvent(uid));
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Notifications Permission
-                  Card(
-                    child: SwitchListTile(
-                      value: healthState.isNotificationsEnabled,
-                      activeColor: const Color(0xFF4F46E5),
-                      title: const Text(
-                        'Health Alerts & Medication Reminders',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    const Text(
+                      'Telemetry & Sensor Sync',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                        letterSpacing: -0.5,
                       ),
-                      subtitle: const Text(
-                        'Receive timely reminders tailored to your life stage.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                      ),
-                      onChanged: (val) {
-                        context.read<HealthSyncBloc>().add(ToggleNotificationsEvent(val));
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Authorize biometric telemetry from Google Health Connect, Apple Health, or wearable sensors for continuous real-time calibration.',
+                      style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Google Health Connect Card
+                    _buildIntegrationCard(
+                      context: context,
+                      title: 'Google Health Connect / Fit',
+                      subtitle: 'Continuous steps, resting heart rate, sleep & glucose',
+                      icon: Icons.monitor_heart_rounded,
+                      color: AppTheme.cyberCyan,
+                      isConnected: healthState.isGoogleFitAuthorized,
+                      lastSync: healthState.googleFitLastSync,
+                      isLoading: healthState.isLoading,
+                      onToggle: () {
+                        if (uid.isNotEmpty) {
+                          context.read<HealthSyncBloc>().add(RequestGoogleFitEvent(uid));
+                        }
                       },
                     ),
-                  ),
-                  const SizedBox(height: 36),
+                    const SizedBox(height: 14),
 
-                  //  Navigation Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            context.go('/onboarding/emergency-contact');
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child: const Text('Back'),
-                        ),
+                    // Apple Health Card
+                    _buildIntegrationCard(
+                      context: context,
+                      title: 'Apple HealthKit',
+                      subtitle: 'Activity rings, vitals & biometric sleep stages',
+                      icon: Icons.health_and_safety_rounded,
+                      color: AppTheme.cyberBlue,
+                      isConnected: healthState.isAppleHealthAuthorized,
+                      lastSync: healthState.appleHealthLastSync,
+                      isLoading: healthState.isLoading,
+                      onToggle: () {
+                        if (uid.isNotEmpty) {
+                          context.read<HealthSyncBloc>().add(RequestAppleHealthEvent(uid));
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Notifications Permission Card
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkCard,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppTheme.darkBorder),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: onboardingState.isSubmitting || uid.isEmpty
-                              ? null
-                              : () {
-                                  context.read<OnboardingBloc>().add(
-                                    CompleteOnboardingEvent(uid: uid, email: email),
-                                  );
-                                  //  Go to Life Stage Welcome
-                                  context.go('/onboarding/welcome');
-                                },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child: onboardingState.isSubmitting
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                )
-                              : const Text('Complete Onboarding'),
+                      child: SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: healthState.isNotificationsEnabled,
+                        activeColor: AppTheme.cyberCyan,
+                        title: const Text(
+                          'Vitality Alerts & Clinical Reminders',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary),
                         ),
+                        subtitle: const Text(
+                          'Receive USPSTF screening prompts and medication reminders.',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        ),
+                        onChanged: (val) {
+                          context.read<HealthSyncBloc>().add(ToggleNotificationsEvent(val));
+                        },
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              context.go('/onboarding/emergency-contact');
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.textSecondary,
+                              side: const BorderSide(color: AppTheme.darkBorder),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: const Text('PREVIOUS', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: onboardingState.isSubmitting || uid.isEmpty
+                                ? null
+                                : () {
+                                    context.read<OnboardingBloc>().add(
+                                      CompleteOnboardingEvent(uid: uid, email: email),
+                                    );
+                                    context.go('/onboarding/welcome');
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.cyberCyan,
+                              foregroundColor: const Color(0xFF080C14),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              elevation: 6,
+                            ),
+                            child: onboardingState.isSubmitting
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(color: Color(0xFF080C14), strokeWidth: 2.2),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'INITIALIZE VITALITY HUD',
+                                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.8),
+                                      ),
+                                      SizedBox(width: 6),
+                                      Icon(Icons.rocket_launch_rounded, size: 16),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -163,56 +218,76 @@ class _StepPermissionsState extends State<StepPermissions> {
     required bool isLoading,
     required VoidCallback onToggle,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: AppTheme.darkCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isConnected ? color.withValues(alpha: 0.4) : AppTheme.darkBorder,
+          width: isConnected ? 1.4 : 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: color.withValues(alpha: 0.4)),
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              if (isLoading)
+                const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyberCyan),
+                )
+              else
+                Switch(
+                  value: isConnected,
+                  activeColor: color,
+                  onChanged: (_) => onToggle(),
+                ),
+            ],
+          ),
+          if (isConnected && lastSync != null) ...[
+            const SizedBox(height: 10),
+            const Divider(color: Color(0xFF1E2D4A), height: 1),
+            const SizedBox(height: 10),
             Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: color.withOpacity(0.1),
-                  child: Icon(icon, color: color),
+                const Icon(Icons.sync_rounded, color: AppTheme.bioEmerald, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  'Active Telemetry • Last Sync: ${DateFormat('hh:mm a').format(lastSync)}',
+                  style: const TextStyle(fontSize: 11, color: AppTheme.bioEmerald, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                    ],
-                  ),
-                ),
-                if (isLoading)
-                  const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
-                  Switch(
-                    value: isConnected,
-                    activeColor: const Color(0xFF0D9488),
-                    onChanged: (_) => onToggle(),
-                  ),
               ],
             ),
-            if (isConnected && lastSync != null) ...[
-              const Divider(height: 20),
-              Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Color(0xFF0D9488), size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Connected • Last Sync: ${DateFormat('hh:mm a').format(lastSync)}',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF0D9488), fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }

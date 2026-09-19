@@ -2,14 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:life_stage_health_app/core/bloc/auth/auth_bloc.dart';
-import 'package:life_stage_health_app/core/bloc/auth/auth_event.dart';
 import 'package:life_stage_health_app/core/bloc/auth/auth_state.dart';
-import 'package:life_stage_health_app/core/bloc/mental_wellness/mood_bloc/mood_bloc.dart';
 import 'package:life_stage_health_app/core/bloc/onboarding/onboarding_bloc.dart';
 import 'package:life_stage_health_app/core/bloc/onboarding/onboarding_event.dart';
 import 'package:life_stage_health_app/core/models/health_enums.dart';
-import 'package:life_stage_health_app/core/models/mental_wellness/mood_entry.dart';
 import 'package:life_stage_health_app/core/services/firebase_service.dart';
 import 'package:life_stage_health_app/core/theme/app_theme.dart';
 import 'package:life_stage_health_app/features/auth/auth_screen.dart';
@@ -33,9 +31,9 @@ import 'package:life_stage_health_app/features/mental_wellness/screens/therapist
 import 'package:life_stage_health_app/core/models/life_stage.dart';
 import 'package:life_stage_health_app/core/di/service_locator.dart';
 import 'package:life_stage_health_app/features/health_modules/screens/health_modules_screen.dart';
-import 'package:life_stage_health_app/features/track/screens/unified_track_screen.dart';
 import 'package:life_stage_health_app/features/learn/screens/learn_screen.dart';
 import 'package:life_stage_health_app/features/profile/screens/profile_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:life_stage_health_app/features/preventive_care/presentation/screens/preventive_care_screen.dart';
 import 'package:life_stage_health_app/features/fitness_nutrition/presentation/screens/fitness_nutrition_screen.dart';
 import 'package:life_stage_health_app/features/sexual_health/presentation/screens/sexual_health_screen.dart';
@@ -45,6 +43,7 @@ import 'package:life_stage_health_app/features/substance_use/presentation/screen
 import 'package:life_stage_health_app/features/telehealth/presentation/screens/telehealth_screen.dart';
 import 'package:life_stage_health_app/features/senior_care/presentation/screens/senior_care_screen.dart';
 import 'package:life_stage_health_app/features/sexual_health/presentation/screens/fertility_tracker_screen.dart';
+import 'package:life_stage_health_app/features/mental_wellness/screens/mental_wellness_screen.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> _rootNavigatorKey = 
@@ -58,10 +57,24 @@ class AppRouter {
   static const Duration _minRedirectInterval = Duration(milliseconds: 500);
   static String? _lastRedirectPath;
   static bool _isRedirecting = false;
+  static final Set<String> _profileLoadRequested = <String>{};
 
-  static final GoRouter router = GoRouter(
+  static final ValueNotifier<int> refreshNotifier = ValueNotifier<int>(0);
+  static void refresh() {
+    refreshNotifier.value++;
+  }
+
+  static GoRouter? _router;
+  static GoRouter get router => _router ??= _createRouter('/');
+
+  static void initRouter({String initialLocation = '/'}) {
+    _router = _createRouter(initialLocation);
+  }
+
+  static GoRouter _createRouter(String initialLocation) => GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: initialLocation,
+    refreshListenable: refreshNotifier,
     debugLogDiagnostics: true,
     redirect: _redirectLogic,
     routes: [
@@ -69,7 +82,10 @@ class AppRouter {
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) {
-          return MainScaffoldWithNavBar(child: child);
+          return MainScaffoldWithNavBar(
+            currentPath: state.uri.path,
+            child: child,
+          );
         },
         routes: [
           // Dashboard Tab
@@ -100,15 +116,11 @@ class AppRouter {
             name: 'health-modules',
             builder: (context, state) => const HealthModulesScreen(),
           ),
-          // Tab 3: Unified Track
+          // Legacy alias for /track to /health-modules (eliminates duplicate screen)
           GoRoute(
             path: '/track',
             name: 'track',
-            builder: (context, state) {
-              final authState = context.read<AuthBloc>().state;
-              final userId = authState is Authenticated ? authState.user.uid : 'guest';
-              return UnifiedTrackScreen(userId: userId);
-            },
+            builder: (context, state) => const HealthModulesScreen(),
           ),
           // Tab 4: Learn
           GoRoute(
@@ -132,9 +144,11 @@ class AppRouter {
             path: '/wellness',
             name: 'wellness',
             builder: (context, state) {
+              final authState = context.read<AuthBloc>().state;
+              final currentUid = authState is Authenticated ? authState.user.uid : (FirebaseAuth.instance.currentUser?.uid ?? '');
               final userId = state.uri.queryParameters['userId'] ?? 
-                  (state.extra as String?) ?? '';
-              return MentalWellnessTabScreen(userId: userId);
+                  (state.extra as String?) ?? currentUid;
+              return MentalWellnessScreen(userId: userId);
             },
           ),
         ],
@@ -536,6 +550,7 @@ class AppRouter {
       debugPrint(' Redirect: path=$currentPath, auth=${authState.runtimeType}');
 
       if (authState is Unauthenticated) {
+        _profileLoadRequested.clear();
         final publicPaths = ['/', '/auth', '/welcome'];
         if (publicPaths.contains(currentPath)) {
           return null;
@@ -549,14 +564,19 @@ class AppRouter {
         final userId = authState.user.uid;
         debugPrint(' User authenticated: $userId');
         
-        if (onboardingState.completedProfile == null) {
-          debugPrint(' Loading profile from Firestore...');
+        final prefs = await SharedPreferences.getInstance();
+        final isLocallyComplete = prefs.getBool('onboarding_completed_$userId') ?? 
+            prefs.getBool('onboarding_completed_global') ?? 
+            false;
+
+        if (onboardingState.completedProfile == null && !_profileLoadRequested.contains(userId)) {
+          _profileLoadRequested.add(userId);
+          debugPrint(' Loading profile once for userId: $userId...');
           onboardingBloc.add(LoadSavedProfile(userId));
-          await Future.delayed(const Duration(milliseconds: 500));
         }
         
-        final isOnboardingComplete = onboardingState.completedProfile != null;
-        debugPrint(' Onboarding complete: $isOnboardingComplete');
+        final isOnboardingComplete = isLocallyComplete || (onboardingState.completedProfile != null);
+        debugPrint(' Onboarding complete: $isOnboardingComplete (cached: $isLocallyComplete)');
 
         if (!isOnboardingComplete) {
           final onboardingPaths = [
@@ -613,7 +633,7 @@ class AppRouter {
   }
 }
 
-// ONBOARDING APP BAR
+// ONBOARDING APP BAR - FUTURISTIC HUD
 class OnboardingAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final double progress;
@@ -626,704 +646,215 @@ class OnboardingAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stepPercentage = (progress * 100).toInt();
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.darkCanvas,
       elevation: 0,
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF0F172A),
-        ),
+      title: Column(
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  color: AppTheme.cyberCyan,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.cyberCyan,
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'PROTOCOL CALIBRATION // $stepPercentage% COMPLETE',
+            style: const TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.cyberCyan,
+              letterSpacing: 1.0,
+            ),
+          ),
+        ],
       ),
       centerTitle: true,
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(6),
-        child: LinearProgressIndicator(
-          value: progress,
-          backgroundColor: const Color(0xFFE2E8F0),
-          color: const Color(0xFF4F46E5),
-          minHeight: 4,
+        preferredSize: const Size.fromHeight(4),
+        child: Container(
+          height: 4,
+          color: const Color(0xFF1E2D4A),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              width: MediaQuery.of(context).size.width * progress.clamp(0.0, 1.0),
+              height: 4,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppTheme.primaryTeal, AppTheme.cyberCyan],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.cyberCyan,
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 6);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 8);
 }
 
-// MAIN SCAFFOLD WITH BOTTOM NAVIGATION
-class MainScaffoldWithNavBar extends StatefulWidget {
+// MAIN SCAFFOLD WITH FLOATING FROSTED GLASS CYBER DOCK
+class MainScaffoldWithNavBar extends StatelessWidget {
   final Widget child;
+  final String currentPath;
 
-  const MainScaffoldWithNavBar({super.key, required this.child});
+  const MainScaffoldWithNavBar({
+    super.key,
+    required this.child,
+    required this.currentPath,
+  });
 
-  @override
-  State<MainScaffoldWithNavBar> createState() => _MainScaffoldWithNavBarState();
-}
-
-class _MainScaffoldWithNavBarState extends State<MainScaffoldWithNavBar> {
-  int _currentIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateIndexFromRoute();
-    });
-  }
-
-  void _updateIndexFromRoute() {
-    final route = ModalRoute.of(context);
-    if (route != null) {
-      final path = route.settings.name ?? '';
-      if (path.contains('/dashboard')) {
-        _currentIndex = 0;
-      } else if (path.contains('/health-modules') || path.contains('/health')) {
-        _currentIndex = 1;
-      } else if (path.contains('/track')) {
-        _currentIndex = 2;
-      } else if (path.contains('/learn')) {
-        _currentIndex = 3;
-      } else if (path.contains('/profile')) {
-        _currentIndex = 4;
-      }
+  int get _currentIndex {
+    if (currentPath.contains('/health-modules') || currentPath.contains('/health') || currentPath.contains('/track')) {
+      return 1;
     }
-  }
-
-  @override
-  void didUpdateWidget(covariant MainScaffoldWithNavBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _updateIndexFromRoute();
+    if (currentPath.contains('/learn')) {
+      return 2;
+    }
+    if (currentPath.contains('/profile')) {
+      return 3;
+    }
+    return 0;
   }
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    final userId = authState is Authenticated ? authState.user.uid : '';
+
     return Scaffold(
-      body: widget.child,
+      backgroundColor: AppTheme.darkCanvas,
+      body: child,
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFFDC2626),
-        icon: const Icon(Icons.emergency, color: Colors.white, size: 20),
+        heroTag: 'app_scaffold_crisis_fab',
+        backgroundColor: AppTheme.neonRed,
+        elevation: 6,
+        icon: const Icon(Icons.emergency_rounded, color: Colors.white, size: 18),
         label: const Text(
-          '988 Crisis',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+          '988 CRISIS',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+            letterSpacing: 0.8,
+          ),
         ),
         onPressed: () {
-          final authState = context.read<AuthBloc>().state;
-          final userId = authState is Authenticated ? authState.user.uid : '';
           context.push('/crisis-resources?userId=$userId');
         },
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF1E293B),
-        currentIndex: _currentIndex,
-        selectedItemColor: const Color(0xFF38BDF8),
-        unselectedItemColor: Colors.white60,
-        selectedFontSize: 11,
-        unselectedFontSize: 10,
-        onTap: (index) {
-          final authState = context.read<AuthBloc>().state;
-          final userId = authState is Authenticated ? authState.user.uid : '';
-
-          setState(() {
-            _currentIndex = index;
-          });
-
-          switch (index) {
-            case 0:
-              context.go('/dashboard?userId=$userId');
-              break;
-            case 1:
-              context.go('/health-modules');
-              break;
-            case 2:
-              context.go('/track');
-              break;
-            case 3:
-              context.go('/learn');
-              break;
-            case 4:
-              context.go('/profile');
-              break;
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_rounded),
-            label: 'Modules',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_chart_rounded),
-            label: 'Track',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_rounded),
-            label: 'Learn',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// TAB SCREENS
-class HealthTabScreen extends StatelessWidget {
-  const HealthTabScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Health'),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: const Center(
-        child: Text('Health Tab - Coming Soon'),
-      ),
-    );
-  }
-}
-
-class AnalyticsTabScreen extends StatelessWidget {
-  const AnalyticsTabScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics'),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: const Center(
-        child: Text('Analytics Tab - Coming Soon'),
-      ),
-    );
-  }
-}
-
-  // ===== MENTAL WELLNESS TAB SCREEN =====
-  class MentalWellnessTabScreen extends StatefulWidget {
-    final String userId;
-
-    const MentalWellnessTabScreen({super.key, this.userId = ''});
-
-    @override
-    State<MentalWellnessTabScreen> createState() => _MentalWellnessTabScreenState();
-  }
-
-  class _MentalWellnessTabScreenState extends State<MentalWellnessTabScreen> {
-    @override
-    void initState() {
-      super.initState();
-      if (widget.userId.isNotEmpty) {
-        _loadRecentMood();
-      }
-    }
-
-    void _loadRecentMood() {
-      context.read<MoodBloc>().add(
-        LoadMoodHistoryEvent(
-          userId: widget.userId,
-          days: 7,
-        ),
-      );
-    }
-
-    @override
-    Widget build(BuildContext context) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Mental Wellness'),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.mood),
-              onPressed: () {
-                if (widget.userId.isNotEmpty) {
-                  context.go('/mood-checkin?userId=${widget.userId}');
-                }
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.history),
-              onPressed: () {
-                if (widget.userId.isNotEmpty) {
-                  context.go('/mood-history?userId=${widget.userId}');
-                }
-              },
-            ),
-          ],
-        ),
-        body: BlocConsumer<MoodBloc, MoodState>(
-          listener: (context, state) {
-            if (state is MoodErrorState) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          },
-          builder: (context, state) {
-            // Get the latest entries
-            List<MoodEntry> recentEntries = [];
-            if (state is MoodHistoryLoadedState) {
-              recentEntries = state.entries.take(5).toList();
-            }
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Quick Actions
-                  const Text(
-                    'Quick Actions',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _buildQuickActionCard(
-                        context,
-                        title: 'Mood Check-in',
-                        icon: Icons.mood,
-                        color: const Color(0xFF6366F1),
-                        onTap: () {
-                          if (widget.userId.isNotEmpty) {
-                            context.go('/mood-checkin?userId=${widget.userId}');
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      _buildQuickActionCard(
-                        context,
-                        title: 'Mood History',
-                        icon: Icons.calendar_today,
-                        color: const Color(0xFF06B6D4),
-                        onTap: () {
-                          if (widget.userId.isNotEmpty) {
-                            context.go('/mood-history?userId=${widget.userId}');
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _buildQuickActionCard(
-                        context,
-                        title: 'Exercises',
-                        icon: Icons.self_improvement,
-                        color: const Color(0xFF10B981),
-                        onTap: () => context.go('/exercises'),
-                      ),
-                      const SizedBox(width: 12),
-                      _buildQuickActionCard(
-                        context,
-                        title: 'Stress Tools',
-                        icon: Icons.spa,
-                        color: const Color(0xFFF59E0B),
-                        onTap: () {
-                          if (widget.userId.isNotEmpty) {
-                            context.go('/stress-management?userId=${widget.userId}');
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _buildQuickActionCard(
-                        context,
-                        title: 'Crisis Support',
-                        icon: Icons.warning_amber,
-                        color: const Color(0xFFDC2626),
-                        onTap: () {
-                          if (widget.userId.isNotEmpty) {
-                            context.go('/crisis-resources?userId=${widget.userId}');
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      _buildQuickActionCard(
-                        context,
-                        title: 'Find Therapist',
-                        icon: Icons.people,
-                        color: const Color(0xFF8B5CF6),
-                        onTap: () {
-                          if (widget.userId.isNotEmpty) {
-                            context.go('/therapist-finder?userId=${widget.userId}');
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Daily Tip
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ' Daily Wellness Tip',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Take 5 minutes today to practice deep breathing. It can help reduce stress and improve focus.',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Recent Mood Section - NOW DYNAMIC
-                  _buildRecentMoodSection(recentEntries, state),
-                ],
-              ),
-            );
-          },
-        ),
-      );
-    }
-
-    Widget _buildRecentMoodSection(List<MoodEntry> entries, MoodState state) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Recent Mood',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              if (entries.isNotEmpty)
-                TextButton(
-                  onPressed: () {
-                    if (widget.userId.isNotEmpty) {
-                      context.go('/mood-history?userId=${widget.userId}');
-                    }
-                  },
-                  child: const Text('View All'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Show loading state
-          if (state is MoodLoadingState)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32.0),
-                child: CircularProgressIndicator(),
-              ),
-            ),
-
-          // Show entries if available
-          if (entries.isNotEmpty)
-            ...entries.map((entry) => _buildMoodEntryCard(entry)),
-
-          // Show empty state if no entries
-          if (entries.isEmpty && state is! MoodLoadingState)
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.mood_bad,
-                    size: 48,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'No mood entries yet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Start your first check-in!',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      if (widget.userId.isNotEmpty) {
-                        context.go('/mood-checkin?userId=${widget.userId}');
-                      }
-                    },
-                    icon: const Icon(Icons.mood),
-                    label: const Text('Check-in Now'),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      );
-    }
-
-    Widget _buildMoodEntryCard(MoodEntry entry) {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFF0F172A).withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(
+            color: AppTheme.cyberCyan.withValues(alpha: 0.25),
+            width: 1.2,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: 0.55),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: AppTheme.cyberCyan.withValues(alpha: 0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 0),
             ),
           ],
-          border: Border.all(color: Colors.grey.shade100),
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // Mood circle
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: _getMoodColor(entry.moodRating),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  entry.moodRating.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-              ),
+            _buildNavItem(context, 0, Icons.speed_rounded, 'HUD', '/dashboard?userId=$userId'),
+            _buildNavItem(context, 1, Icons.grid_view_rounded, 'Modules', '/health-modules'),
+            _buildNavItem(context, 2, Icons.menu_book_rounded, 'Learn', '/learn'),
+            _buildNavItem(context, 3, Icons.person_rounded, 'Profile', '/profile'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(BuildContext context, int index, IconData icon, String label, String route) {
+    final isSelected = _currentIndex == index;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        context.go(route);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.cyberCyan.withValues(alpha: 0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.cyberCyan.withValues(alpha: 0.45)
+                : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? AppTheme.cyberCyan : const Color(0xFF64748B),
             ),
-            const SizedBox(width: 12),
-            // Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _formatDate(entry.timestamp),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  if (entry.triggers.isNotEmpty)
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 2,
-                      children: entry.triggers.take(3).map((trigger) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            trigger,
-                            style: const TextStyle(fontSize: 10, color: Colors.grey),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  if (entry.notes != null)
-                    Text(
-                      entry.notes!,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                color: isSelected ? AppTheme.cyberCyan : const Color(0xFF64748B),
+                letterSpacing: 0.5,
               ),
-            ),
-            // PHQ-2 / GAD-2 indicators
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (entry.phq2Score != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: entry.phq2Score! >= 3 ? Colors.red.shade100 : Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'PHQ-2: ${entry.phq2Score}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: entry.phq2Score! >= 3 ? Colors.red : Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                if (entry.gad2Score != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: entry.gad2Score! >= 3 ? Colors.orange.shade100 : Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'GAD-2: ${entry.gad2Score}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: entry.gad2Score! >= 3 ? Colors.orange : Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
             ),
           ],
         ),
-      );
-    }
-
-    Color _getMoodColor(int rating) {
-      if (rating >= 8) return AppTheme.healthyGreen;
-      if (rating >= 6) return AppTheme.primaryTeal;
-      if (rating >= 4) return AppTheme.warningOrange;
-      return AppTheme.dangerRed;
-    }
-
-    String _formatDate(DateTime date) {
-      final now = DateTime.now();
-      final diff = now.difference(date);
-
-      if (diff.inDays == 0) {
-        if (diff.inHours < 1) {
-          if (diff.inMinutes < 1) return 'Just now';
-          return '${diff.inMinutes}m ago';
-        }
-        return '${diff.inHours}h ago';
-      }
-      if (diff.inDays == 1) return 'Yesterday';
-      if (diff.inDays < 7) return '${diff.inDays}d ago';
-      return '${date.day}/${date.month}/${date.year}';
-    }
-
-    Widget _buildQuickActionCard(
-      BuildContext context, {
-      required String title,
-      required IconData icon,
-      required Color color,
-      required VoidCallback onTap,
-    }) {
-      return Expanded(
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 28),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-  }
-class ProfileTabScreen extends StatelessWidget {
-  const ProfileTabScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () {
-              context.read<AuthBloc>().add(AuthSignOutRequested());
-              context.go('/');
-            },
-          ),
-        ],
-      ),
-      body: const Center(
-        child: Text('Profile Tab - Coming Soon'),
       ),
     );
   }

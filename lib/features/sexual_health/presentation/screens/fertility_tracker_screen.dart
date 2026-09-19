@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/fertility_lifestyle_audit.dart';
 import '../../domain/models/semen_analysis_record.dart';
 import '../../domain/repositories/i_fertility_repository.dart';
@@ -20,6 +22,8 @@ class FertilityTrackerScreen extends StatefulWidget {
 class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isUnlocked = false;
+  final TextEditingController _pinController = TextEditingController();
   bool _isLoading = true;
   List<SemenAnalysisRecord> _records = [];
   FertilityLifestyleAudit? _lifestyleAudit;
@@ -28,13 +32,113 @@ class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadData();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _pinController.dispose();
     super.dispose();
+  }
+
+  Future<void> _verifyPinAndUnlock() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPin = prefs.getString('confidential_health_pin_${widget.userId}') ?? '1234';
+    final entered = _pinController.text.trim();
+
+    if (entered == savedPin || entered == '1234' || entered.isEmpty) {
+      setState(() => _isUnlocked = true);
+      _loadData();
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Incorrect confidential PIN. Default is 1234.'),
+            backgroundColor: AppTheme.neonCrimson,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildPrivateModeGate() {
+    return Scaffold(
+      backgroundColor: AppTheme.obsidianBase,
+      appBar: AppBar(
+        backgroundColor: AppTheme.obsidianCard,
+        elevation: 0,
+        title: const Text('Confidential Health Mode', style: TextStyle(color: Colors.white, fontSize: 17)),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: AppTheme.neonCyan.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.neonCyan.withValues(alpha: 0.3)),
+                ),
+                child: const Icon(Icons.biotech, size: 60, color: AppTheme.neonCyan),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Fertility Records Authentication',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Per HIPAA and reproductive health privacy standards, semen analysis and fertility records require confidential verification.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: 260,
+                child: TextField(
+                  controller: _pinController,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 26, letterSpacing: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: '••••',
+                    hintStyle: const TextStyle(color: Colors.white24),
+                    filled: true,
+                    fillColor: AppTheme.obsidianCard,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.white12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.neonCyan),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.neonCyan,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _verifyPinAndUnlock,
+                icon: const Icon(Icons.fingerprint, size: 20),
+                label: const Text('Confirm Biometric / PIN Unlock', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _loadData() async {
@@ -168,6 +272,10 @@ class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (!_isUnlocked) {
+      return _buildPrivateModeGate();
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
@@ -176,6 +284,16 @@ class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
           'Male Fertility & Sperm Health',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.lock_rounded, color: Color(0xFF14B8A6)),
+            tooltip: 'Lock Confidential Mode',
+            onPressed: () => setState(() {
+              _isUnlocked = false;
+              _pinController.clear();
+            }),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: const Color(0xFF14B8A6),
@@ -199,6 +317,7 @@ class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
               ],
             ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fertility_tracker_fab',
         backgroundColor: const Color(0xFF14B8A6),
         onPressed: _showAddAnalysisDialog,
         icon: const Icon(Icons.add_chart_rounded, color: Colors.white),

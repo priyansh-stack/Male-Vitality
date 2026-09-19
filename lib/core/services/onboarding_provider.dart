@@ -18,7 +18,7 @@ class OnboardingProvider extends ChangeNotifier {
   String _gender = 'Male';
   
   List<String> _selectedConditions = [];
-  List<Medication> _medications = [];
+  final List<Medication> _medications = [];
   LifestyleFactors _lifestyle = LifestyleFactors();
   EmergencyContact? _emergencyContact;
 

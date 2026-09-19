@@ -61,11 +61,17 @@ class GetMoodStatisticsUseCase {
       'Very High (9-10)': 0,
     };
     for (final rating in ratings) {
-      if (rating <= 2) moodDistribution['Very Low (1-2)'] = (moodDistribution['Very Low (1-2)'] ?? 0) + 1;
-      else if (rating <= 4) moodDistribution['Low (3-4)'] = (moodDistribution['Low (3-4)'] ?? 0) + 1;
-      else if (rating <= 6) moodDistribution['Medium (5-6)'] = (moodDistribution['Medium (5-6)'] ?? 0) + 1;
-      else if (rating <= 8) moodDistribution['High (7-8)'] = (moodDistribution['High (7-8)'] ?? 0) + 1;
-      else moodDistribution['Very High (9-10)'] = (moodDistribution['Very High (9-10)'] ?? 0) + 1;
+      if (rating <= 2) {
+        moodDistribution['Very Low (1-2)'] = (moodDistribution['Very Low (1-2)'] ?? 0) + 1;
+      } else if (rating <= 4) {
+        moodDistribution['Low (3-4)'] = (moodDistribution['Low (3-4)'] ?? 0) + 1;
+      } else if (rating <= 6) {
+        moodDistribution['Medium (5-6)'] = (moodDistribution['Medium (5-6)'] ?? 0) + 1;
+      } else if (rating <= 8) {
+        moodDistribution['High (7-8)'] = (moodDistribution['High (7-8)'] ?? 0) + 1;
+      } else {
+        moodDistribution['Very High (9-10)'] = (moodDistribution['Very High (9-10)'] ?? 0) + 1;
+      }
     }
 
     // Trigger frequency

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:life_stage_health_app/core/models/health_enums.dart';
 import 'package:life_stage_health_app/core/models/health_metric.dart';
+import '../../../core/theme/app_theme.dart';
 
 class MetricChart extends StatelessWidget {
   final List<HealthMetric> metrics;
@@ -16,87 +17,122 @@ class MetricChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Health Trends',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+    return Container(
+      decoration: AppTheme.cyberCardDecoration(),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.auto_graph_rounded, color: AppTheme.cyberCyan, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'WEEKLY VITALS PROGRESSION',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.cyberCyan,
+                      letterSpacing: 1.0,
+                    ),
                   ),
-                ),
-                _buildPeriodSelector(),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: metrics.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No data available',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    )
-                  : _buildChartContent(),
-            ),
-          ],
-        ),
+                ],
+              ),
+              _buildPeriodSelector(),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 160,
+            child: metrics.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No vitals history recorded yet for this period',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                    ),
+                  )
+                : _buildChartContent(),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildPeriodSelector() {
-    return DropdownButton<TrendDepressed>(
-      value: selectedPeriod,
-      underline: const SizedBox(),
-      items: TrendDepressed.values.map((period) {
-        return DropdownMenuItem(
-          value: period,
-          child: Text(_getPeriodLabel(period)),
-        );
-      }).toList(),
-      onChanged: (value) {
-        if (value != null) {
-          onPeriodChanged(value);
-        }
-      },
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTheme.darkSurface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.darkBorder),
+      ),
+      child: DropdownButton<TrendDepressed>(
+        value: selectedPeriod,
+        underline: const SizedBox(),
+        dropdownColor: AppTheme.darkCard,
+        icon: const Icon(Icons.arrow_drop_down, color: AppTheme.cyberCyan, size: 18),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+        items: TrendDepressed.values.map((period) {
+          return DropdownMenuItem(
+            value: period,
+            child: Text(_getPeriodLabel(period)),
+          );
+        }).toList(),
+        onChanged: (value) {
+          if (value != null) {
+            onPeriodChanged(value);
+          }
+        },
+      ),
     );
   }
 
   Widget _buildChartContent() {
-    // Placeholder chart - you can use fl_chart or syncfusion here
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
+        color: AppTheme.darkSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.darkBorder),
       ),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.show_chart,
-              size: 40,
-              color: Colors.grey.shade400,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.cyberCyan.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.ssid_chart_rounded,
+                size: 30,
+                color: AppTheme.cyberCyan,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
-              'Chart will display ${metrics.length} data points',
+              '${metrics.length} CLINICAL LOGS MONITORED',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Vitality baseline and clinical progression active',
               style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 12,
+                color: AppTheme.textMuted,
+                fontSize: 10,
               ),
             ),
           ],
@@ -117,4 +153,4 @@ class MetricChart extends StatelessWidget {
         return '1 Year';
     }
   }
-}
+}
