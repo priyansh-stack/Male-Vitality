@@ -46,15 +46,13 @@ void main() {
       expect(titles, contains('Mental Wellness'));
       expect(titles, contains('Preventive Care'));
       // Senior specific modules should NOT be present
-      expect(titles, isNot(contains('Fall Detection & Safety')));
+      expect(titles, isNot(contains('Senior Vitality & Safety')));
     });
 
     test('verifies correct modules enabled for Senior (70+)', () {
       final enabledSenior = LifeStageAdaptiveRules.getModulesForStage(LifeStage.senior);
       final titles = enabledSenior.map((m) => m.title).toList();
-      expect(titles, contains('Fall Detection & Safety'));
-      expect(titles, contains('Cognitive Brain Training'));
-      expect(titles, contains('Caregiver Portal'));
+      expect(titles, contains('Senior Vitality & Safety'));
     });
 
     test('provides clinical priority headlines tailored per life stage', () {

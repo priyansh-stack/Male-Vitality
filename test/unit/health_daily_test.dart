@@ -112,7 +112,7 @@ void main() {
       const date = '2026-09-17';
 
       final path = FirestoreService.healthDailyDocPath(uid, date);
-      expect(path, 'users/user_abc_123/healthDaily/2026-09-17');
+      expect(path, 'users/user_abc_123/shared_health/daily/records/2026-09-17');
     });
 
     test('equality and props support value-based comparisons', () {

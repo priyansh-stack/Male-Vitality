@@ -739,8 +739,9 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
         : '--';
 
     // Fourth metric: Calories (primary if > 0) or SpO2
-    final hasCalories = (daily?.calories != null && daily!.calories! > 0);
-    int? effectiveCalories = hasCalories ? daily!.calories : null;
+    final cal = daily?.calories;
+    final hasCalories = cal != null && cal > 0;
+    int? effectiveCalories = hasCalories ? cal : null;
     if (effectiveCalories == null) {
       for (final d in dashboardState.recentHealthDailies) {
         if (d.calories != null && d.calories! > 0) {
