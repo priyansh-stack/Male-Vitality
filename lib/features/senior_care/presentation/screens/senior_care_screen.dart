@@ -6,11 +6,13 @@ import '../../domain/repositories/i_senior_care_repository.dart';
 class SeniorCareScreen extends StatefulWidget {
   final String userId;
   final ISeniorCareRepository repository;
+  final int initialTabIndex;
 
   const SeniorCareScreen({
     super.key,
     required this.userId,
     required this.repository,
+    this.initialTabIndex = 0,
   });
 
   @override
@@ -36,7 +38,11 @@ class _SeniorCareScreenState extends State<SeniorCareScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 3),
+    );
     _loadData();
   }
 

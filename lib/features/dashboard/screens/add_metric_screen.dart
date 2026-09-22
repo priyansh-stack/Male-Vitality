@@ -8,14 +8,30 @@ import '../../../core/theme/app_theme.dart';
 
 class AddMetricScreen extends StatefulWidget {
   final String userId;
+  final MetricType? initialMetricType;
 
-  const AddMetricScreen({super.key, required this.userId});
+  const AddMetricScreen({
+    super.key,
+    required this.userId,
+    this.initialMetricType,
+  });
 
   @override
   State<AddMetricScreen> createState() => _AddMetricScreenState();
 }
 
 class _AddMetricScreenState extends State<AddMetricScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialMetricType != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.read<MetricEntryBloc>().add(MetricTypeSelected(widget.initialMetricType!));
+        }
+      });
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(

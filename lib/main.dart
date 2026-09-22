@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'core/services/fcm_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:life_stage_health_app/core/bloc/auth/auth_event.dart';
 import 'package:life_stage_health_app/core/bloc/onboarding/onboarding_event.dart';
@@ -80,8 +82,12 @@ void main() async {
       persistenceEnabled: true,
       cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
     );
+
+    // Initialize FCM & Background Handler
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    await FcmService.instance.initialize();
   } catch (e) {
-    debugPrint('Firebase initialization failed: $e');
+    debugPrint('Firebase/FCM initialization failed: $e');
   }
 
   // Initialize Hydrated Storage
@@ -117,6 +123,7 @@ void main() async {
   final firebaseUser = FirebaseAuth.instance.currentUser;
   if (firebaseUser != null) {
     final uid = firebaseUser.uid;
+    FcmService.instance.syncUserSession(uid);
     final overrideRoute = prefs.getString('override_route');
     if (overrideRoute != null && overrideRoute.isNotEmpty) {
       initialLocation = overrideRoute;

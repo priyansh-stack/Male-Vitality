@@ -499,6 +499,7 @@ class AppRouter {
           return SeniorCareScreen(
             userId: userId,
             repository: ServiceLocator.seniorCareRepository,
+            initialTabIndex: 2,
           );
         },
       ),

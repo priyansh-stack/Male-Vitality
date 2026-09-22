@@ -82,6 +82,24 @@ class LifestyleFactors {
 
   bool get isSmoker => smoking == SmokingStatus.daily || smoking == SmokingStatus.occasional;
 
+  LifestyleFactors copyWith({
+    SmokingStatus? smoking,
+    AlcoholConsumption? alcohol,
+    ExerciseLevel? exercise,
+    SleepQuality? sleep,
+    DietType? diet,
+    int? stressLevel,
+  }) {
+    return LifestyleFactors(
+      smoking: smoking ?? this.smoking,
+      alcohol: alcohol ?? this.alcohol,
+      exercise: exercise ?? this.exercise,
+      sleep: sleep ?? this.sleep,
+      diet: diet ?? this.diet,
+      stressLevel: stressLevel ?? this.stressLevel,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'smoking': smoking.name,

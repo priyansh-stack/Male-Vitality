@@ -61,5 +61,5 @@ class HealthScore extends Equatable {
   }
 
   @override
-  List<Object?> get props => [score, calculatedAt, categoryScores, recommendations];
+  List<Object?> get props => [score, categoryScores, recommendations, userId];
 }

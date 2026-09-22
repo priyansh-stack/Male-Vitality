@@ -82,9 +82,9 @@ class AuthService extends ChangeNotifier {
     return handle;
   }
 
-  /// Default baseline date of birth (e.g., 28-30 year old adult calibration)
+  /// Default baseline date of birth (Adult young demographic: Sep 17, 2004)
   /// Note: Never extract or guess birth years from email username digits.
-  static DateTime get defaultBaselineDob => DateTime(1996, 1, 1);
+  static DateTime get defaultBaselineDob => DateTime(2004, 9, 17);
 
   /// Queries Google People API v1 using Google OAuth token to fetch official Birthday and Gender
   static Future<Map<String, dynamic>?> _fetchGooglePeopleProfile(Map<String, String> authHeaders) async {
@@ -157,26 +157,44 @@ class AuthService extends ChangeNotifier {
 
     if (FirebaseService.isInitialized) {
       try {
-        FirebaseAuth.instance.authStateChanges().listen((User? user) {
+        FirebaseAuth.instance.authStateChanges().listen((User? user) async {
           _isLoading = false;
           _isInitialized = true;
           
           if (user != null) {
             final cleanName = extractCleanName(user.displayName, user.email);
-            final defaultDob = defaultBaselineDob;
-            final defaultAge = DateTime.now().year - defaultDob.year;
+            DateTime userDob = defaultBaselineDob;
+            int userAge = DateTime.now().year - userDob.year;
+            String userGender = 'Male';
+
+            try {
+              final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+              if (userDoc.exists && userDoc.data() != null) {
+                final d = userDoc.data()!;
+                if (d['dateOfBirth'] != null) {
+                  final parsed = DateTime.tryParse(d['dateOfBirth'] as String);
+                  if (parsed != null) {
+                    userDob = parsed;
+                    userAge = (d['age'] as num?)?.toInt() ?? (DateTime.now().year - userDob.year);
+                  }
+                }
+                if (d['gender'] != null) {
+                  userGender = d['gender'] as String;
+                }
+              }
+            } catch (_) {}
 
             _currentUser = AuthUser(
               uid: user.uid,
               email: user.email ?? '',
               displayName: cleanName,
               photoUrl: user.photoURL,
-              dateOfBirth: defaultDob,
-              age: defaultAge,
-              gender: 'Male',
+              dateOfBirth: userDob,
+              age: userAge,
+              gender: userGender,
             );
-            _syncUserToFirestore(user, cleanName);
-            debugPrint('⚡ [AuthService] Real Firebase user authenticated: ${_currentUser?.email} (${_currentUser?.uid})');
+            await _syncUserToFirestore(user, cleanName);
+            debugPrint('⚡ [AuthService] Real Firebase user authenticated: ${_currentUser?.email} (${_currentUser?.uid}), Age: $userAge');
           } else {
             _currentUser = null;
             debugPrint('⚡ [AuthService] No active Firebase user session');

@@ -74,7 +74,7 @@ class UserProfile {
       uid: map['uid'] ?? '',
       email: map['email'] ?? '',
       displayName: map['displayName'] ?? '',
-      dateOfBirth: DateTime.tryParse(map['dateOfBirth'] ?? '') ?? DateTime(1995, 1, 1),
+      dateOfBirth: DateTime.tryParse(map['dateOfBirth'] ?? '') ?? DateTime(2004, 9, 17),
       gender: map['gender'] ?? 'Not Specified',
       healthConditions: List<String>.from(map['healthConditions'] ?? []),
       medications: (map['medications'] as List<dynamic>?)

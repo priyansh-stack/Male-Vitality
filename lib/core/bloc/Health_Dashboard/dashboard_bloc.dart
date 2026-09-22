@@ -200,13 +200,20 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         depressed: event.trendDepressed,
       );
 
-      emit(
-        MetricTrendLoaded(
-          metrics: metrics,
-          metricType: event.metricType,
-          trendDepressed: event.trendDepressed,
-        ),
-      );
+      if (state is DashboardLoaded) {
+        final currentState = state as DashboardLoaded;
+        final updatedTrends = Map<MetricType, List<HealthMetric>>.from(currentState.metricsTrend);
+        updatedTrends[event.metricType] = metrics;
+        emit(currentState.copyWith(metricsTrend: updatedTrends));
+      } else {
+        emit(
+          MetricTrendLoaded(
+            metrics: metrics,
+            metricType: event.metricType,
+            trendDepressed: event.trendDepressed,
+          ),
+        );
+      }
     } catch (e) {
       emit(
         DashboardError(
@@ -235,10 +242,12 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
       if (state is DashboardLoaded) {
         final currentState = state as DashboardLoaded;
-        add(LoadDashboardData(userId: event.metric.userId));
+        final updatedAll = List<HealthMetric>.from(currentState.allMetrics)..insert(0, event.metric);
+        final updatedRecent = List<HealthMetric>.from(currentState.recentMetrics)..insert(0, event.metric);
+        emit(currentState.copyWith(allMetrics: updatedAll, recentMetrics: updatedRecent));
+      } else {
+        emit(MetricAdded(event.metric));
       }
-
-      emit(MetricAdded(event.metric));
     } catch (e) {
       emit(
         DashboardError(
@@ -400,18 +409,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     if (state is DashboardLoaded) {
       final currentState = state as DashboardLoaded;
       emit(currentState.copyWith(trendDepressed: event.trendDepressed));
-
-      if (currentState.healthScore.userId != null) {
-        for (final metricType in currentState.visibleMetrics) {
-          add(
-            LoadMetricTrend(
-              userId: currentState.healthScore.userId!,
-              metricType: metricType,
-              trendDepressed: event.trendDepressed,
-            ),
-          );
-        }
-      }
     }
   }
 
@@ -421,6 +418,12 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) {
     if (state is DashboardLoaded) {
       final currentState = state as DashboardLoaded;
+      // Guard against redundant emissions when daily data is unchanged
+      if (currentState.todayHealthDaily == event.todayDaily &&
+          (event.recentDailies == null ||
+              currentState.recentHealthDailies == event.recentDailies)) {
+        return;
+      }
       emit(
         currentState.copyWith(
           todayHealthDaily: event.todayDaily,

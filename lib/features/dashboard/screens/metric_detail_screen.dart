@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:life_stage_health_app/core/bloc/Health_Dashboard/dashboard_bloc.dart';
-import 'package:life_stage_health_app/core/bloc/Health_Dashboard/support_states.dart';
+import 'package:provider/provider.dart';
 import 'package:life_stage_health_app/core/models/health_enums.dart';
 import 'package:life_stage_health_app/core/models/health_metric.dart';
+import 'package:life_stage_health_app/core/services/database_service.dart';
+import 'package:life_stage_health_app/core/theme/app_theme.dart';
 
 class MetricDetailScreen extends StatefulWidget {
   final String userId;
@@ -21,6 +21,8 @@ class MetricDetailScreen extends StatefulWidget {
 
 class _MetricDetailScreenState extends State<MetricDetailScreen> {
   TrendDepressed _selectedPeriod = TrendDepressed.thirtyDays;
+  List<HealthMetric>? _metrics;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -28,53 +30,66 @@ class _MetricDetailScreenState extends State<MetricDetailScreen> {
     _loadData();
   }
 
-  void _loadData() {
-    context.read<DashboardBloc>().add(
-      LoadMetricTrend(
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final dbService = context.read<DatabaseService>();
+      final metrics = await dbService.getMetricTrend(
         userId: widget.userId,
         metricType: widget.metricType,
-        trendDepressed: _selectedPeriod,
-      ),
-    );
+        depressed: _selectedPeriod,
+      );
+      if (mounted) {
+        setState(() {
+          _metrics = metrics;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load metric trend: $e'),
+            backgroundColor: AppTheme.neonRed,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.darkCanvas,
       appBar: AppBar(
-        title: Text(_getMetricLabel(widget.metricType)),
+        backgroundColor: AppTheme.darkSurface,
+        elevation: 0,
+        title: Text(
+          _getMetricLabel(widget.metricType).toUpperCase(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+            letterSpacing: 1.0,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_today),
+            icon: const Icon(Icons.calendar_today, color: AppTheme.cyberCyan),
             onPressed: _showPeriodPicker,
           ),
         ],
       ),
-      body: BlocConsumer<DashboardBloc, DashboardState>(
-        listener: (context, state) {
-          if (state is DashboardError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        },
-        builder: (context, state) {
-          if (state is MetricTrendLoaded) {
-            return _buildTrendContent(state);
-          }
-          if (state is DashboardLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return const Center(child: Text('Select a time period to view trends'));
-        },
-      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.cyberCyan),
+            )
+          : _buildTrendContent(_metrics ?? []),
     );
   }
 
-  Widget _buildTrendContent(MetricTrendLoaded state) {
+  Widget _buildTrendContent(List<HealthMetric> metrics) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -83,14 +98,19 @@ class _MetricDetailScreenState extends State<MetricDetailScreen> {
           const SizedBox(height: 16),
           Expanded(
             flex: 2,
-            child: state.metrics.isEmpty
-                ? const Center(child: Text('No data for this period'))
-                : _buildChart(state.metrics),
+            child: metrics.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No telemetry logged for this period',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                    ),
+                  )
+                : _buildChart(metrics),
           ),
           const SizedBox(height: 16),
           Expanded(
-            flex: 1,
-            child: _buildMetricsList(state.metrics),
+            flex: 3,
+            child: _buildMetricsList(metrics),
           ),
         ],
       ),
@@ -103,9 +123,24 @@ class _MetricDetailScreenState extends State<MetricDetailScreen> {
       children: TrendDepressed.values.map((period) {
         final isSelected = period == _selectedPeriod;
         return FilterChip(
-          label: Text(_getPeriodLabel(period)),
+          label: Text(
+            _getPeriodLabel(period),
+            style: TextStyle(
+              color: isSelected ? Colors.black : Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
           selected: isSelected,
-          selectedColor: Colors.blue.shade100,
+          selectedColor: AppTheme.cyberCyan,
+          backgroundColor: AppTheme.darkSurface,
+          checkmarkColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(
+              color: isSelected ? AppTheme.cyberCyan : AppTheme.darkBorder,
+            ),
+          ),
           onSelected: (_) {
             setState(() {
               _selectedPeriod = period;
@@ -118,33 +153,45 @@ class _MetricDetailScreenState extends State<MetricDetailScreen> {
   }
 
   Widget _buildChart(List<HealthMetric> metrics) {
-    // Placeholder - implement with fl_chart or syncfusion
     return Container(
       width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppTheme.darkSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.darkBorder),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.show_chart,
-            size: 48,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${metrics.length} data points',
-            style: TextStyle(
-              color: Colors.grey.shade600,
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.cyberCyan.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.ssid_chart_rounded,
+              size: 40,
+              color: AppTheme.cyberCyan,
             ),
           ),
+          const SizedBox(height: 12),
           Text(
-            '${_getMetricLabel(widget.metricType)} Trend',
+            '${metrics.length} TELEMETRY RECORDS',
             style: const TextStyle(
-              fontWeight: FontWeight.w500,
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${_getMetricLabel(widget.metricType)} Trend (${_getPeriodLabel(_selectedPeriod)})',
+            style: const TextStyle(
+              color: AppTheme.textMuted,
+              fontSize: 12,
             ),
           ),
         ],
@@ -157,21 +204,44 @@ class _MetricDetailScreenState extends State<MetricDetailScreen> {
       itemCount: metrics.length,
       itemBuilder: (context, index) {
         final metric = metrics[index];
-        return Card(
+        final alertColor = metric.isAbnormal ? AppTheme.neonRed : AppTheme.bioEmerald;
+        return Container(
           margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: AppTheme.darkSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: metric.isAbnormal ? AppTheme.neonRed.withOpacity(0.4) : AppTheme.darkBorder,
+            ),
+          ),
           child: ListTile(
             leading: Icon(
-              metric.isAbnormal ? Icons.warning : Icons.check_circle,
-              color: metric.isAbnormal ? Colors.red : Colors.green,
+              metric.isAbnormal ? Icons.warning_rounded : Icons.check_circle_rounded,
+              color: alertColor,
+              size: 22,
             ),
             title: Text(
               '${metric.displayValue} ${metric.unit}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                fontSize: 14,
+              ),
             ),
-            subtitle: Text(_formatDate(metric.timeStamp)),
-            trailing: Text(
-              metric.source.toString().split('.').last,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            subtitle: Text(
+              _formatDate(metric.timeStamp),
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppTheme.darkBorder,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                metric.source.toString().split('.').last.toUpperCase(),
+                style: const TextStyle(fontSize: 9, color: AppTheme.cyberCyan, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         );
@@ -182,23 +252,33 @@ class _MetricDetailScreenState extends State<MetricDetailScreen> {
   void _showPeriodPicker() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: AppTheme.darkCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
-        return Wrap(
-          children: TrendDepressed.values.map((period) {
-            return ListTile(
-              title: Text(_getPeriodLabel(period)),
-              trailing: period == _selectedPeriod
-                  ? const Icon(Icons.check, color: Colors.blue)
-                  : null,
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _selectedPeriod = period;
-                  _loadData();
-                });
-              },
-            );
-          }).toList(),
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Wrap(
+            children: TrendDepressed.values.map((period) {
+              return ListTile(
+                title: Text(
+                  _getPeriodLabel(period),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+                trailing: period == _selectedPeriod
+                    ? const Icon(Icons.check_circle_rounded, color: AppTheme.cyberCyan)
+                    : null,
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _selectedPeriod = period;
+                    _loadData();
+                  });
+                },
+              );
+            }).toList(),
+          ),
         );
       },
     );

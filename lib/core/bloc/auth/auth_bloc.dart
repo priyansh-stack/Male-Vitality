@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../router/app_router.dart';
 import '../../services/auth_service.dart';
+import '../../services/fcm_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -41,6 +42,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     
     final user = _authService.currentUser;
     if (user != null) {
+      FcmService.instance.syncUserSession(user.uid);
       emit(Authenticated(user));
     } else {
       emit(Unauthenticated());
@@ -52,6 +54,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       final user = await _authService.signInWithGoogle();
+      FcmService.instance.syncUserSession(user.uid);
       emit(Authenticated(user));
       AppRouter.refresh();
     } catch (e) {
