@@ -6,6 +6,7 @@ import 'package:life_stage_health_app/core/models/health_metric.dart';
 import 'package:life_stage_health_app/core/models/mental_wellness/mood_entry.dart';
 import 'package:life_stage_health_app/core/services/database_service.dart';
 import 'package:life_stage_health_app/core/services/pdf_generate.dart';
+import 'package:life_stage_health_app/core/services/pdf_download_service.dart';
 import '../models/user_profile.dart';
 import '../models/health_import.dart';
 import '../models/health_daily.dart';
@@ -674,8 +675,11 @@ class FirestoreService {
   }
 
   Future<String> _savePDF(Uint8List pdfBytes) async {
-    // Note: Actual file saving logic would go here using path_provider
-    return 'path/to/saved/pdf.pdf';
+    final file = await PdfDownloadService.instance.saveAndNotify(
+      bytes: pdfBytes,
+      fileName: 'MaleVitality_Health_Summary_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
+    return file.path;
   }
 
   // MOOD ENTRIES (NEW)

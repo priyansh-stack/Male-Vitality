@@ -789,6 +789,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _setNotificationPref('fcm_notify_sync', val, 'wearable_sync');
             },
           ),
+          const Divider(color: AppTheme.darkBorder, height: 1),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.notifications_active_rounded, size: 16, color: AppTheme.cyberCyan),
+              label: const Text('Dispatch Test Clinical Notification', style: TextStyle(color: AppTheme.cyberCyan, fontSize: 12, fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppTheme.cyberCyan, width: 1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onPressed: () async {
+                await FcmService.instance.showWeeklyVitalityDigest(
+                  vitalityScore: 88,
+                  cohort: 'Young Adult (18-25)',
+                  status: 'Optimal Baseline',
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Test clinical alert dispatched to notification tray!'),
+                      backgroundColor: AppTheme.cyberCyan,
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -1013,8 +1042,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               onPressed: () async {
                 final prefs = await SharedPreferences.getInstance();
-                final savedPin = prefs.getString('confidential_health_pin_$userId') ?? '1234';
-                if (pinCtrl.text == savedPin) {
+                final savedPin = prefs.getString('confidential_health_pin_$userId');
+                if (savedPin == null || savedPin.isEmpty) {
+                  Navigator.pop(dialogCtx);
+                  if (context.mounted) {
+                    _showChangePinDialog(context, userId);
+                  }
+                  return;
+                }
+                final entered = pinCtrl.text.trim();
+                if (entered.length == 4 && entered == savedPin) {
                   Navigator.pop(dialogCtx);
                   if (context.mounted) {
                     context.push('/sexual-health');
@@ -1410,83 +1447,139 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showChangePinDialog(BuildContext context, String userId) {
+  void _showChangePinDialog(BuildContext context, String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPin = prefs.getString('confidential_health_pin_$userId');
+    final hasExistingPin = savedPin != null && savedPin.isNotEmpty;
+
+    final currentPinCtrl = TextEditingController();
     final newPinCtrl = TextEditingController();
     final confirmPinCtrl = TextEditingController();
+    String? errorText;
+
+    if (!context.mounted) return;
 
     showDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppTheme.neonPurple, width: 1.2),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.pin_rounded, color: AppTheme.neonPurple),
-            SizedBox(width: 10),
-            Text('Update Security PIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter a new 4-digit security code for your confidential health vault.',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: newPinCtrl,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 6),
-              decoration: InputDecoration(
-                labelText: 'New 4-Digit PIN',
-                labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
-                filled: true,
-                fillColor: AppTheme.darkCanvas,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.darkBorder)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.neonPurple)),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: confirmPinCtrl,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 6),
-              decoration: InputDecoration(
-                labelText: 'Confirm 4-Digit PIN',
-                labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
-                filled: true,
-                fillColor: AppTheme.darkCanvas,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.darkBorder)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.neonPurple)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.darkCard,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppTheme.neonPurple, width: 1.2),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.neonPurple,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          title: Row(
+            children: [
+              const Icon(Icons.pin_rounded, color: AppTheme.neonPurple),
+              const SizedBox(width: 10),
+              Text(hasExistingPin ? 'Update Security PIN' : 'Set Up Security PIN',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hasExistingPin
+                    ? 'Enter your current PIN, followed by your new 4-digit security code.'
+                    : 'Create a 4-digit security code for your confidential health vault.',
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              if (hasExistingPin) ...[
+                TextField(
+                  controller: currentPinCtrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  obscureText: true,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 6),
+                  decoration: InputDecoration(
+                    labelText: 'Current 4-Digit PIN',
+                    labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                    counterText: '',
+                    filled: true,
+                    fillColor: AppTheme.darkCanvas,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.darkBorder)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.neonPurple)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              TextField(
+                controller: newPinCtrl,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                obscureText: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 6),
+                decoration: InputDecoration(
+                  labelText: hasExistingPin ? 'New 4-Digit PIN' : 'Create 4-Digit PIN',
+                  labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                  counterText: '',
+                  filled: true,
+                  fillColor: AppTheme.darkCanvas,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.darkBorder)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.neonPurple)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: confirmPinCtrl,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                obscureText: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 6),
+                decoration: InputDecoration(
+                  labelText: 'Confirm 4-Digit PIN',
+                  labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                  counterText: '',
+                  filled: true,
+                  fillColor: AppTheme.darkCanvas,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.darkBorder)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.neonPurple)),
+                ),
+              ),
+              if (errorText != null) ...[
+                const SizedBox(height: 8),
+                Text(errorText!, style: const TextStyle(color: AppTheme.neonRed, fontSize: 12)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
             ),
-            onPressed: () async {
-              final newPin = newPinCtrl.text.trim();
-              final confirmPin = confirmPinCtrl.text.trim();
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.neonPurple,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                if (hasExistingPin && currentPinCtrl.text.trim() != savedPin) {
+                  setDialogState(() => errorText = 'Current PIN is incorrect.');
+                  return;
+                }
+                final newPin = newPinCtrl.text.trim();
+                final confirmPin = confirmPinCtrl.text.trim();
 
-              if (newPin.length == 4 && int.tryParse(newPin) != null && newPin == confirmPin) {
-                final prefs = await SharedPreferences.getInstance();
+                if (newPin.length != 4 || int.tryParse(newPin) == null) {
+                  setDialogState(() => errorText = 'PIN must be exactly 4 digits.');
+                  return;
+                }
+                if (hasExistingPin && newPin == currentPinCtrl.text.trim()) {
+                  setDialogState(() => errorText = 'New PIN must be different from current.');
+                  return;
+                }
+                if (newPin != confirmPin) {
+                  setDialogState(() => errorText = 'New PINs do not match.');
+                  return;
+                }
+
                 await prefs.setString('confidential_health_pin_$userId', newPin);
                 if (dialogCtx.mounted) Navigator.pop(dialogCtx);
                 if (context.mounted) {
@@ -1507,18 +1600,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   );
                 }
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    backgroundColor: AppTheme.neonRed,
-                    content: Text('PIN must be 4 digits and match exactly.'),
-                  ),
-                );
-              }
-            },
-            child: const Text('Save PIN', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
+              },
+              child: Text(hasExistingPin ? 'Update PIN' : 'Save PIN', style: const TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
     );
   }

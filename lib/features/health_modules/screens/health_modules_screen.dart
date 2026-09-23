@@ -86,13 +86,16 @@ class _HealthModulesScreenState extends State<HealthModulesScreen> {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                '${userStage.name.toUpperCase()} ARCHETYPE',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  letterSpacing: 0.8,
+                              Flexible(
+                                child: Text(
+                                  '${userStage.name.toUpperCase()} ARCHETYPE',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    letterSpacing: 0.8,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const SizedBox(width: 8),

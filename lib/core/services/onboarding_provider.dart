@@ -14,7 +14,7 @@ class OnboardingProvider extends ChangeNotifier {
 
   // Form Fields State
   String _displayName = '';
-  DateTime _dateOfBirth = DateTime(1998, 6, 15);
+  DateTime _dateOfBirth = DateTime(2004, 9, 17);
   String _gender = 'Male';
   
   List<String> _selectedConditions = [];

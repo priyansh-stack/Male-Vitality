@@ -153,4 +153,63 @@ class FcmService {
       payload: message.data.toString(),
     );
   }
+
+  Future<void> showLocalAlert({
+    required String title,
+    required String body,
+    String? payload,
+    int? id,
+  }) async {
+    await _localNotifications.show(
+      id ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000),
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _clinicalChannel.id,
+          _clinicalChannel.name,
+          channelDescription: _clinicalChannel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+      ),
+      payload: payload,
+    );
+  }
+
+  Future<void> showWeeklyVitalityDigest({
+    int vitalityScore = 88,
+    String cohort = 'Young Adult (18-25)',
+    String status = 'Optimal Baseline',
+  }) async {
+    await showLocalAlert(
+      title: '🏆 Weekly Male Vitality Report: $vitalityScore/100',
+      body: 'Status: $status ($cohort). Sleep recovery & metabolic efficiency on target.',
+      payload: '{"action":"weekly_vitality_digest"}',
+    );
+  }
+
+  Future<void> showBiomarkerAnomalyAlert({
+    String metric = 'Resting Heart Rate',
+    String reading = '78 bpm (Baseline 58)',
+    String clinicalContext = 'Elevated resting HR detected during recovery phase. Rest & hydration protocol recommended.',
+  }) async {
+    await showLocalAlert(
+      title: '⚠️ Clinical Biomarker Alert: $metric',
+      body: '$reading: $clinicalContext',
+      payload: '{"action":"biomarker_anomaly","metric":"$metric"}',
+    );
+  }
+
+  Future<void> showDailyProtocolDirective({
+    String protocolName = 'Morning Circadian Synchronization',
+    String directive = 'Hydrate with electrolytes + 15 min natural sunlight to optimize morning cortisol awakening response.',
+  }) async {
+    await showLocalAlert(
+      title: '☀️ Daily Protocol Directive: $protocolName',
+      body: directive,
+      payload: '{"action":"daily_directive"}',
+    );
+  }
 }

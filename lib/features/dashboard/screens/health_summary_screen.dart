@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:life_stage_health_app/core/bloc/Health_Dashboard/dashboard_bloc.dart';
 import 'package:life_stage_health_app/core/bloc/Health_Dashboard/support_states.dart';
+import 'package:life_stage_health_app/core/services/pdf_download_service.dart';
 
 class HealthSummaryScreen extends StatefulWidget {
   final String userId;
@@ -42,10 +43,17 @@ class _HealthSummaryScreenState extends State<HealthSummaryScreen> {
       appBar: AppBar(
         title: const Text('Health Summary'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              // Share PDF
+          BlocBuilder<DashboardBloc, DashboardState>(
+            builder: (context, state) {
+              if (state is SummaryGenerated && state.pdfPath.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(Icons.file_open),
+                  tooltip: 'Open PDF',
+                  onPressed: () =>
+                      PdfDownloadService.instance.openPdf(state.pdfPath),
+                );
+              }
+              return const SizedBox.shrink();
             },
           ),
         ],
@@ -219,8 +227,16 @@ class _HealthSummaryScreenState extends State<HealthSummaryScreen> {
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () {
-              // Open PDF
+            onPressed: () async {
+              if (state.pdfPath.isNotEmpty) {
+                await PdfDownloadService.instance.openPdf(state.pdfPath);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('PDF is being prepared or path is unavailable.'),
+                  ),
+                );
+              }
             },
             icon: const Icon(Icons.picture_as_pdf),
             label: const Text('Open PDF'),

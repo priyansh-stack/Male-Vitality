@@ -23,6 +23,8 @@ class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isUnlocked = false;
+  bool _isPinConfigured = false;
+  bool _checkingPinStatus = true;
   final TextEditingController _pinController = TextEditingController();
   bool _isLoading = true;
   List<SemenAnalysisRecord> _records = [];
@@ -32,6 +34,18 @@ class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _checkPinStatus();
+  }
+
+  Future<void> _checkPinStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPin = prefs.getString('confidential_health_pin_${widget.userId}');
+    if (mounted) {
+      setState(() {
+        _isPinConfigured = (savedPin != null && savedPin.isNotEmpty);
+        _checkingPinStatus = false;
+      });
+    }
   }
 
   @override
@@ -42,18 +56,37 @@ class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
   }
 
   Future<void> _verifyPinAndUnlock() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedPin = prefs.getString('confidential_health_pin_${widget.userId}') ?? '1234';
     final entered = _pinController.text.trim();
-
-    if (entered == savedPin || entered == '1234' || entered.isEmpty) {
-      setState(() => _isUnlocked = true);
-      _loadData();
-    } else {
+    if (entered.isEmpty || entered.length != 4) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Incorrect confidential PIN. Default is 1234.'),
+            content: Text('Please enter your complete 4-digit PIN.'),
+            backgroundColor: AppTheme.neonCrimson,
+          ),
+        );
+      }
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final savedPin = prefs.getString('confidential_health_pin_${widget.userId}');
+
+    if (savedPin == null || savedPin.isEmpty) {
+      _showSetInitialPinDialog();
+      return;
+    }
+
+    if (entered == savedPin) {
+      _pinController.clear();
+      setState(() => _isUnlocked = true);
+      _loadData();
+    } else {
+      _pinController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Incorrect confidential PIN. Access denied.'),
             backgroundColor: AppTheme.neonCrimson,
           ),
         );
@@ -61,7 +94,257 @@ class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
     }
   }
 
+  Future<void> _showSetInitialPinDialog() async {
+    final newPinCtrl = TextEditingController();
+    final confirmPinCtrl = TextEditingController();
+    String? errorText;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.obsidianCard,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: AppTheme.neonCyan, width: 1.2),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.shield_outlined, color: AppTheme.neonCyan),
+                  SizedBox(width: 8),
+                  Text('Set Confidential Vault PIN', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Create a 4-digit security PIN to safeguard your semen analysis and fertility records.',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: newPinCtrl,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.bold),
+                    decoration: const InputDecoration(
+                      labelText: 'Create 4-Digit PIN',
+                      labelStyle: TextStyle(color: Colors.white60),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmPinCtrl,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.bold),
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm 4-Digit PIN',
+                      labelStyle: TextStyle(color: Colors.white60),
+                      counterText: '',
+                    ),
+                  ),
+                  if (errorText != null) ...[
+                    const SizedBox(height: 8),
+                    Text(errorText!, style: const TextStyle(color: AppTheme.neonCrimson, fontSize: 12)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.neonCyan, foregroundColor: Colors.black),
+                  onPressed: () async {
+                    final newPin = newPinCtrl.text.trim();
+                    final confirm = confirmPinCtrl.text.trim();
+                    if (newPin.length != 4 || int.tryParse(newPin) == null) {
+                      setDlgState(() => errorText = 'PIN must be exactly 4 numeric digits.');
+                      return;
+                    }
+                    if (newPin != confirm) {
+                      setDlgState(() => errorText = 'PINs do not match.');
+                      return;
+                    }
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setString('confidential_health_pin_${widget.userId}', newPin);
+                    if (mounted) {
+                      Navigator.pop(ctx);
+                      setState(() {
+                        _isPinConfigured = true;
+                        _isUnlocked = true;
+                      });
+                      _loadData();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Confidential Health PIN successfully set and vault unlocked!'),
+                          backgroundColor: AppTheme.neonCyan,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Save & Unlock', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showChangePinDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPin = prefs.getString('confidential_health_pin_${widget.userId}');
+
+    if (savedPin == null || savedPin.isEmpty) {
+      _showSetInitialPinDialog();
+      return;
+    }
+
+    final currentPinCtrl = TextEditingController();
+    final newPinCtrl = TextEditingController();
+    final confirmPinCtrl = TextEditingController();
+    String? errorText;
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.obsidianCard,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: AppTheme.neonCyan, width: 1.2),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.lock_reset, color: AppTheme.neonCyan),
+                  SizedBox(width: 8),
+                  Text('Change 4-Digit PIN', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: currentPinCtrl,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 6),
+                    decoration: const InputDecoration(
+                      labelText: 'Current 4-Digit PIN',
+                      labelStyle: TextStyle(color: Colors.white60),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: newPinCtrl,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 6),
+                    decoration: const InputDecoration(
+                      labelText: 'New 4-Digit PIN',
+                      labelStyle: TextStyle(color: Colors.white60),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: confirmPinCtrl,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 6),
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm New 4-Digit PIN',
+                      labelStyle: TextStyle(color: Colors.white60),
+                      counterText: '',
+                    ),
+                  ),
+                  if (errorText != null) ...[
+                    const SizedBox(height: 8),
+                    Text(errorText!, style: const TextStyle(color: AppTheme.neonCrimson, fontSize: 12)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.neonCyan, foregroundColor: Colors.black),
+                  onPressed: () async {
+                    if (currentPinCtrl.text.trim() != savedPin) {
+                      setDlgState(() => errorText = 'Current PIN is incorrect.');
+                      return;
+                    }
+                    final newPin = newPinCtrl.text.trim();
+                    final confirm = confirmPinCtrl.text.trim();
+                    if (newPin.length != 4 || int.tryParse(newPin) == null) {
+                      setDlgState(() => errorText = 'New PIN must be exactly 4 digits.');
+                      return;
+                    }
+                    if (newPin == currentPinCtrl.text.trim()) {
+                      setDlgState(() => errorText = 'New PIN must be different from current PIN.');
+                      return;
+                    }
+                    if (newPin != confirm) {
+                      setDlgState(() => errorText = 'New PIN and confirmation do not match.');
+                      return;
+                    }
+
+                    await prefs.setString('confidential_health_pin_${widget.userId}', newPin);
+                    if (mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Confidential Health PIN successfully updated!'),
+                          backgroundColor: AppTheme.neonCyan,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Update PIN', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildPrivateModeGate() {
+    if (_checkingPinStatus) {
+      return const Scaffold(
+        backgroundColor: AppTheme.obsidianBase,
+        body: Center(child: CircularProgressIndicator(color: AppTheme.neonCyan)),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.obsidianBase,
       appBar: AppBar(
@@ -82,58 +365,84 @@ class _FertilityTrackerScreenState extends State<FertilityTrackerScreen>
                   shape: BoxShape.circle,
                   border: Border.all(color: AppTheme.neonCyan.withValues(alpha: 0.3)),
                 ),
-                child: const Icon(Icons.biotech, size: 60, color: AppTheme.neonCyan),
+                child: Icon(
+                  _isPinConfigured ? Icons.lock_outline_rounded : Icons.shield_rounded,
+                  size: 60,
+                  color: AppTheme.neonCyan,
+                ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Fertility Records Authentication',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              Text(
+                _isPinConfigured ? 'Fertility Records Authentication' : 'Confidential Vault Setup',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Per HIPAA and reproductive health privacy standards, semen analysis and fertility records require confidential verification.',
+              Text(
+                _isPinConfigured
+                    ? 'Per HIPAA and reproductive health privacy standards, enter your 4-digit PIN to access semen analysis and fertility records.'
+                    : 'Personal 4-digit PIN encryption is required to safeguard your semen analysis and fertility health records.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               const SizedBox(height: 28),
-              SizedBox(
-                width: 260,
-                child: TextField(
-                  controller: _pinController,
-                  obscureText: true,
-                  keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 26, letterSpacing: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                  decoration: InputDecoration(
-                    counterText: '',
-                    hintText: '••••',
-                    hintStyle: const TextStyle(color: Colors.white24),
-                    filled: true,
-                    fillColor: AppTheme.obsidianCard,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.white12),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.neonCyan),
+              if (_isPinConfigured) ...[
+                SizedBox(
+                  width: 260,
+                  child: TextField(
+                    controller: _pinController,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 26, letterSpacing: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      hintText: '••••',
+                      hintStyle: const TextStyle(color: Colors.white24),
+                      filled: true,
+                      fillColor: AppTheme.obsidianCard,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.white12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppTheme.neonCyan),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.neonCyan,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.neonCyan,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _verifyPinAndUnlock,
+                  icon: const Icon(Icons.lock_open_rounded, size: 20),
+                  label: const Text('Unlock Confidential Records', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                onPressed: _verifyPinAndUnlock,
-                icon: const Icon(Icons.fingerprint, size: 20),
-                label: const Text('Confirm Biometric / PIN Unlock', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: _showChangePinDialog,
+                  icon: const Icon(Icons.lock_reset, size: 16, color: AppTheme.neonCyan),
+                  label: const Text('Change 4-Digit PIN', style: TextStyle(color: AppTheme.neonCyan, fontSize: 12)),
+                ),
+              ] else ...[
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.neonCyan,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _showSetInitialPinDialog,
+                  icon: const Icon(Icons.add_moderator_rounded, size: 20),
+                  label: const Text('Set Up 4-Digit Security PIN', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
             ],
           ),
         ),

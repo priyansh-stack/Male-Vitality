@@ -42,7 +42,7 @@ class OnboardingState extends Equatable {
     this.isSubmitting = false,
     this.completedProfile,
     this.errorMessage,
-  })  : dateOfBirth = dateOfBirth ?? DateTime(1998, 6, 15),
+  })  : dateOfBirth = dateOfBirth ?? DateTime(2004, 9, 17),
         lifestyle = lifestyle ?? LifestyleFactors();
 
   OnboardingState copyWith({

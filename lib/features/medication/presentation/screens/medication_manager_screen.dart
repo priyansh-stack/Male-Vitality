@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/engine/drug_interaction_engine.dart';
+import '../../../../core/services/pdf_generate.dart';
+import '../../../../core/services/pdf_download_service.dart';
 import '../../domain/models/patient_medication.dart';
 import '../../domain/repositories/i_medication_repository.dart';
 
@@ -306,28 +308,70 @@ class _MedicationManagerScreenState extends State<MedicationManagerScreen> {
   void _showPdfExportNotice() {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogCtx) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
-          title: const Text('Medication Summary PDF', style: TextStyle(color: Colors.white)),
+          title: const Row(
+            children: [
+              Icon(Icons.picture_as_pdf, color: Color(0xFF38BDF8), size: 22),
+              SizedBox(width: 8),
+              Text('Medication Summary PDF', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
           content: Text(
-            'Generated HIPAA-compliant medication record containing ${_meds.length} medications, dose schedules, and prescriber contact details ready to share with your physician.',
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
+            'Generate a HIPAA-compliant medication record containing ${_meds.length} medications, dose schedules, and prescriber contact details to save directly to your device.',
+            style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogCtx),
               child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Medication Summary PDF saved to device documents.')),
-                );
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7), foregroundColor: Colors.white),
+              onPressed: () async {
+                Navigator.pop(dialogCtx);
+                try {
+                  final pdfGen = PDFGenerator();
+                  final medsList = _meds.map((m) => {
+                    'name': m.name,
+                    'dosage': m.dosage,
+                    'frequency': m.frequency,
+                    'prescriber': m.prescriber,
+                  }).toList();
+
+                  final bytes = await pdfGen.generateMedicationSummary(
+                    userName: 'Priyanshu Kumar',
+                    cohort: 'Young Adult (18-25)',
+                    medications: medsList,
+                  );
+
+                  final file = await PdfDownloadService.instance.saveAndNotify(
+                    bytes: bytes,
+                    fileName: 'MaleVitality_Medications_${widget.userId}.pdf',
+                  );
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Downloaded: ${file.path.split("/").last}'),
+                        action: SnackBarAction(
+                          label: 'OPEN',
+                          textColor: Colors.amber,
+                          onPressed: () => PdfDownloadService.instance.openPdf(file.path),
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to generate PDF: $e')),
+                    );
+                  }
+                }
               },
-              icon: const Icon(Icons.download),
+              icon: const Icon(Icons.download, size: 16),
               label: const Text('Download PDF'),
             ),
           ],

@@ -1,9 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../../../core/services/pdf_generate.dart';
+import '../../../../core/services/pdf_download_service.dart';
 import '../../domain/models/telehealth_consultation.dart';
 import '../../domain/repositories/i_telehealth_repository.dart';
 
@@ -362,9 +361,10 @@ class _TelehealthScreenState extends State<TelehealthScreen> {
         metrices: metrics,
       );
 
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/MaleVitality_Health_Summary_${widget.userId}.pdf');
-      await file.writeAsBytes(pdfBytes);
+      final file = await PdfDownloadService.instance.saveAndNotify(
+        bytes: pdfBytes,
+        fileName: 'MaleVitality_Health_Summary_${widget.userId}.pdf',
+      );
 
       if (mounted) {
         setState(() => _isGeneratingPdf = false);
@@ -398,7 +398,7 @@ class _TelehealthScreenState extends State<TelehealthScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Your comprehensive MaleVitality clinical summary has been compiled and saved locally.',
+                'Your comprehensive MaleVitality clinical summary has been compiled and downloaded to your device.',
                 style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
               ),
               const SizedBox(height: 12),
@@ -436,12 +436,23 @@ class _TelehealthScreenState extends State<TelehealthScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Close', style: TextStyle(color: Colors.white60)),
             ),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF38BDF8),
+                side: const BorderSide(color: Color(0xFF38BDF8)),
+              ),
+              onPressed: () async {
+                await PdfDownloadService.instance.openPdf(filePath);
+              },
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('Open PDF'),
+            ),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white),
               onPressed: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Physician Health Summary PDF ready to share.')),
+                  SnackBar(content: Text('Saved to Downloads: ${filePath.split("/").last}')),
                 );
               },
               icon: const Icon(Icons.check, size: 16),
