@@ -8,6 +8,7 @@ class VitalityCopilotState extends Equatable {
   final VitalityCopilotStatus status;
   final List<ChatMessage> messages;
   final bool hasApiKey;
+  final bool hasCustomApiKey;
   final bool isProModel;
   final String? errorMessage;
   final bool hasEmergencyAlert;
@@ -20,7 +21,8 @@ class VitalityCopilotState extends Equatable {
   const VitalityCopilotState({
     this.status = VitalityCopilotStatus.initial,
     this.messages = const [],
-    this.hasApiKey = false,
+    this.hasApiKey = true,
+    this.hasCustomApiKey = false,
     this.isProModel = false,
     this.errorMessage,
     this.hasEmergencyAlert = false,
@@ -35,6 +37,7 @@ class VitalityCopilotState extends Equatable {
     VitalityCopilotStatus? status,
     List<ChatMessage>? messages,
     bool? hasApiKey,
+    bool? hasCustomApiKey,
     bool? isProModel,
     String? errorMessage,
     bool? hasEmergencyAlert,
@@ -48,6 +51,7 @@ class VitalityCopilotState extends Equatable {
       status: status ?? this.status,
       messages: messages ?? this.messages,
       hasApiKey: hasApiKey ?? this.hasApiKey,
+      hasCustomApiKey: hasCustomApiKey ?? this.hasCustomApiKey,
       isProModel: isProModel ?? this.isProModel,
       errorMessage: errorMessage,
       hasEmergencyAlert: hasEmergencyAlert ?? this.hasEmergencyAlert,
@@ -64,6 +68,7 @@ class VitalityCopilotState extends Equatable {
         status,
         messages,
         hasApiKey,
+        hasCustomApiKey,
         isProModel,
         errorMessage,
         hasEmergencyAlert,

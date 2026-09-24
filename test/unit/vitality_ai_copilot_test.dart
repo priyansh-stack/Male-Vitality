@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:life_stage_health_app/core/models/health_daily.dart';
 import 'package:life_stage_health_app/core/models/health_enums.dart';
 import 'package:life_stage_health_app/core/models/health_score.dart';
@@ -13,6 +14,9 @@ class MockVitalityGeminiService extends VitalityGeminiService {
 
   @override
   Future<bool> hasApiKey() async => _hasKey;
+
+  @override
+  Future<bool> hasCustomApiKey() async => _hasKey;
 
   @override
   Future<bool> testApiKey(String apiKey) async => apiKey.startsWith('AIzaSy');
@@ -52,6 +56,8 @@ class MockVitalityChatLibraryRepository extends VitalityChatLibraryRepository {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('VitalityCopilotCubit Tests', () {
     late MockVitalityGeminiService mockService;
     late MockVitalityChatLibraryRepository mockLibrary;
@@ -77,6 +83,7 @@ void main() {
     );
 
     setUp(() {
+      SharedPreferences.setMockInitialValues({});
       mockService = MockVitalityGeminiService();
       mockLibrary = MockVitalityChatLibraryRepository();
       cubit = VitalityCopilotCubit(

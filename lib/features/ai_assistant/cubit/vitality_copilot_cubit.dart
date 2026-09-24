@@ -30,6 +30,7 @@ class VitalityCopilotCubit extends Cubit<VitalityCopilotState> {
 
   Future<void> _init() async {
     final hasKey = await geminiService.hasApiKey();
+    final hasCustomKey = await geminiService.hasCustomApiKey();
     final dynamicName = _resolveDynamicUserName();
     final newSessionId = 'session_${DateTime.now().millisecondsSinceEpoch}';
     final initialGreeting = _buildInitialGreeting(dynamicName);
@@ -41,6 +42,7 @@ class VitalityCopilotCubit extends Cubit<VitalityCopilotState> {
 
     emit(state.copyWith(
       hasApiKey: hasKey,
+      hasCustomApiKey: hasCustomKey,
       currentUserName: dynamicName,
       currentSessionId: newSessionId,
       sessions: userSessions,
@@ -89,7 +91,8 @@ class VitalityCopilotCubit extends Cubit<VitalityCopilotState> {
   Future<void> saveApiKey(String key) async {
     await geminiService.saveApiKey(key);
     final hasKey = await geminiService.hasApiKey();
-    emit(state.copyWith(hasApiKey: hasKey, errorMessage: null));
+    final hasCustomKey = await geminiService.hasCustomApiKey();
+    emit(state.copyWith(hasApiKey: hasKey, hasCustomApiKey: hasCustomKey, errorMessage: null));
   }
 
   Future<bool> testApiKey(String key) async {

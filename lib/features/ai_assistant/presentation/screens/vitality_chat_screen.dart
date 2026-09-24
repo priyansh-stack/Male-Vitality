@@ -360,28 +360,68 @@ class _VitalityChatScreenState extends State<VitalityChatScreen> {
                   ),
                 ),
 
-              // API Key Missing Warning Banner
-              if (!state.hasApiKey)
-                GestureDetector(
-                  onTap: _openKeyDialog,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    color: AppTheme.cyberCyan.withValues(alpha: 0.15),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.info_outline, color: AppTheme.cyberCyan, size: 18),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Tap here to add your Google Gemini API key to activate live responses.',
-                            style: TextStyle(color: AppTheme.cyberCyan, fontSize: 12),
-                          ),
-                        ),
-                        Icon(Icons.chevron_right, color: AppTheme.cyberCyan, size: 18),
-                      ],
-                    ),
+              // Active Engine Indicator Banner
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppTheme.darkCard.withValues(alpha: 0.8),
+                  border: Border(
+                    bottom: BorderSide(color: AppTheme.cyberCyan.withValues(alpha: 0.2)),
                   ),
                 ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: state.hasCustomApiKey ? AppTheme.bioEmerald : AppTheme.cyberCyan,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: (state.hasCustomApiKey ? AppTheme.bioEmerald : AppTheme.cyberCyan).withValues(alpha: 0.5),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        state.hasCustomApiKey
+                            ? 'Gemini Pro Cloud Active'
+                            : 'Grounded Clinical AI Engine Active',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: _openKeyDialog,
+                      child: Row(
+                        children: [
+                          Icon(
+                            state.hasCustomApiKey ? Icons.vpn_key : Icons.vpn_key_outlined,
+                            color: AppTheme.cyberCyan,
+                            size: 13,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            state.hasCustomApiKey ? 'Custom Key' : 'Add API Key',
+                            style: const TextStyle(
+                              color: AppTheme.cyberCyan,
+                              fontSize: 11,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
               // Chat Messages Stream
               Expanded(
