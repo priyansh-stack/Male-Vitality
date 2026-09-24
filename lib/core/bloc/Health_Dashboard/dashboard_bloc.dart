@@ -115,6 +115,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       final healthScore = ClinicalEngine.calculateHealthScore(
         metrics: all30dMetrics,
         moodEntries: mood7d,
+        todayDaily: todayHealthDaily,
+        recentDailies: recentHealthDailies,
       );
 
       final todayFocus = ClinicalEngine.getTodayFocus(
@@ -424,12 +426,21 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
               currentState.recentHealthDailies == event.recentDailies)) {
         return;
       }
+      final updatedToday = event.todayDaily ?? currentState.todayHealthDaily;
+      final updatedRecent = event.recentDailies ?? currentState.recentHealthDailies;
+      final updatedScore = ClinicalEngine.calculateHealthScore(
+        metrics: currentState.allMetrics,
+        moodEntries: const [],
+        todayDaily: updatedToday,
+        recentDailies: updatedRecent,
+      );
+
       emit(
         currentState.copyWith(
+          healthScore: updatedScore,
           todayHealthDaily: event.todayDaily,
           clearTodayDaily: event.todayDaily == null,
-          recentHealthDailies:
-              event.recentDailies ?? currentState.recentHealthDailies,
+          recentHealthDailies: updatedRecent,
           healthDailyStatus: event.todayDaily != null
               ? HealthDailyLoadStatus.loaded
               : HealthDailyLoadStatus.noData,

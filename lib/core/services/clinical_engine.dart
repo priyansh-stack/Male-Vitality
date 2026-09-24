@@ -7,6 +7,7 @@ import '../models/health_enums.dart';
 import '../models/supporting_health_classes.dart';
 import '../models/bloodpressure.dart';
 import '../models/mental_wellness/mood_entry.dart';
+import '../models/health_daily.dart';
 
 class ClinicalEngine {
   
@@ -14,25 +15,40 @@ class ClinicalEngine {
   static HealthScore calculateHealthScore({
     required List<HealthMetric> metrics,
     List<MoodEntry> moodEntries = const [],
+    HealthDaily? todayDaily,
+    List<HealthDaily> recentDailies = const [],
   }) {
-    // If NO metrics → return default
-    if (metrics.isEmpty && moodEntries.isEmpty) {
+    final hasWearableData = todayDaily != null || recentDailies.isNotEmpty;
+    // If NO metrics and no wearable data → return default baseline
+    if (metrics.isEmpty && moodEntries.isEmpty && !hasWearableData) {
       return HealthScore(
         score: 50,
         calculatedAt: DateTime.now(),
         categoryScores: const {},
         recommendations: const [
-          "Start logging your health metrics to get your baseline Health Score.",
+          "Start logging your health metrics or sync your wearable to get your baseline Health Score.",
           "Complete a mood check-in to track your mental wellness.",
         ],
       );
     }
 
-    // Calculate individual category scores
-    final physicalScore = _calculatePhysicalScore(metrics);
+    // Calculate individual category scores incorporating live wearable feeds
+    final physicalScore = _calculatePhysicalScore(
+      metrics,
+      todayDaily: todayDaily,
+      recentDailies: recentDailies,
+    );
     final mentalScore = _calculateMentalScore(moodEntries);
-    final sleepScore = _calculateSleepScore(metrics);
-    final activityScore = _calculateActivityScore(metrics);
+    final sleepScore = _calculateSleepScore(
+      metrics,
+      todayDaily: todayDaily,
+      recentDailies: recentDailies,
+    );
+    final activityScore = _calculateActivityScore(
+      metrics,
+      todayDaily: todayDaily,
+      recentDailies: recentDailies,
+    );
 
     // Weighted average
     final totalScore = (
@@ -70,7 +86,11 @@ class ClinicalEngine {
   }
 
   // 2. PHYSICAL SCORE (Cardiovascular + Metabolic)
-  static int _calculatePhysicalScore(List<HealthMetric> metrics) {
+  static int _calculatePhysicalScore(
+    List<HealthMetric> metrics, {
+    HealthDaily? todayDaily,
+    List<HealthDaily> recentDailies = const [],
+  }) {
     if (metrics.isEmpty) return 50;
 
     int score = 100;
@@ -135,9 +155,38 @@ class ClinicalEngine {
       }
     }
 
-    // If no physical metrics were logged, start from 60
+    // If no manual heart rate was logged, calibrate with wearable resting heart rate
+    if (hrCount == 0) {
+      final rhr = todayDaily?.restingHeartRate ??
+          recentDailies.reversed
+              .where((d) => d.restingHeartRate != null && d.restingHeartRate! > 0)
+              .firstOrNull
+              ?.restingHeartRate;
+      if (rhr != null && rhr > 0) {
+        if (rhr <= 62) {
+          score += 8; // Optimal resting heart rate (excellent tone)
+        } else if (rhr <= 72) {
+          score += 4; // Good healthy range
+        } else if (rhr > 85) {
+          score -= 10;
+        }
+      }
+    }
+
+    // If no manual physical metrics were logged, calibrate from wearable biometrics
     if (bpCount == 0 && hrCount == 0 && glucoseCount == 0 && weightCount == 0) {
-      score = 60;
+      final rhr = todayDaily?.restingHeartRate ??
+          recentDailies.reversed
+              .where((d) => d.restingHeartRate != null && d.restingHeartRate! > 0)
+              .firstOrNull
+              ?.restingHeartRate;
+      if (rhr != null && rhr > 0) {
+        if (rhr <= 65) return 92;
+        if (rhr <= 75) return 85;
+        if (rhr <= 85) return 75;
+        return 65;
+      }
+      return 75; // Neutral healthy baseline
     }
 
     return score.clamp(0, 100);
@@ -145,7 +194,7 @@ class ClinicalEngine {
 
   // 3. MENTAL SCORE (Mood, PHQ-2, GAD-2)
   static int _calculateMentalScore(List<MoodEntry> moodEntries) {
-    if (moodEntries.isEmpty) return 50;
+    if (moodEntries.isEmpty) return 75; // Neutral baseline
 
     int score = 100;
     final recentMoods = moodEntries.take(7).toList();
@@ -212,58 +261,113 @@ class ClinicalEngine {
   }
 
   // 4. SLEEP SCORE
-  static int _calculateSleepScore(List<HealthMetric> metrics) {
+  static int _calculateSleepScore(
+    List<HealthMetric> metrics, {
+    HealthDaily? todayDaily,
+    List<HealthDaily> recentDailies = const [],
+  }) {
     final sleepMetrics = metrics.where((m) => m.type == MetricType.sleep).toList();
     
-    if (sleepMetrics.isEmpty) return 50;
+    double? sleepHours;
+    int? wearableSleepScore;
+
+    if (sleepMetrics.isNotEmpty) {
+      sleepHours = sleepMetrics.first.value as double;
+    } else {
+      // Check today's or most recent night's wearable sleep record
+      final effectiveSleep = (todayDaily?.sleepMinutes != null && todayDaily!.sleepMinutes! > 0)
+          ? todayDaily
+          : recentDailies.reversed
+              .where((d) => d.sleepMinutes != null && d.sleepMinutes! > 0)
+              .firstOrNull;
+      if (effectiveSleep != null && effectiveSleep.sleepMinutes != null) {
+        sleepHours = effectiveSleep.sleepMinutes! / 60.0;
+        wearableSleepScore = effectiveSleep.sleepScore;
+      }
+    }
+
+    if (sleepHours == null) return 75; // Neutral baseline when untracked
 
     int score = 100;
-    final lastSleep = sleepMetrics.first.value as double;
-
-    if (lastSleep < 4 || lastSleep > 11) {
+    if (sleepHours < 4 || sleepHours > 11) {
       score -= 30;
-    } else if (lastSleep < 5 || lastSleep > 10) {
+    } else if (sleepHours < 5 || sleepHours > 10) {
       score -= 20;
-    } else if (lastSleep < 6 || lastSleep > 9) {
+    } else if (sleepHours < 6 || sleepHours > 9) {
       score -= 10;
-    } else if (lastSleep < 7 || lastSleep > 8) {
+    } else if (sleepHours < 7 || sleepHours > 8.5) {
       score -= 5;
+    }
+
+    if (wearableSleepScore != null && wearableSleepScore > 0) {
+      return ((score * 0.5) + (wearableSleepScore * 0.5)).round().clamp(0, 100);
     }
 
     return score.clamp(0, 100);
   }
 
   // 5. ACTIVITY SCORE
-  static int _calculateActivityScore(List<HealthMetric> metrics) {
+  static int _calculateActivityScore(
+    List<HealthMetric> metrics, {
+    HealthDaily? todayDaily,
+    List<HealthDaily> recentDailies = const [],
+  }) {
     final stepMetrics = metrics.where((m) => m.type == MetricType.steps).toList();
     final calorieMetrics = metrics.where((m) => m.type == MetricType.calories).toList();
 
-    if (stepMetrics.isEmpty && calorieMetrics.isEmpty) return 50;
+    int steps = 0;
+    int calories = 0;
+    int activeMinutes = 0;
 
-    int score = 100;
-    final steps = stepMetrics.isNotEmpty ? stepMetrics.first.value as int : 0;
-    final calories = calorieMetrics.isNotEmpty ? calorieMetrics.first.value as int : 0;
-
-    // Steps scoring
-    if (steps > 0) {
-      if (steps >= 10000) {
-        score += 10;
-      } else if (steps >= 7500) {
-        score += 5;
-      } else if (steps < 3000) {
-        score -= 15;
-      } else if (steps < 5000) {
-        score -= 10;
-      }
+    if (stepMetrics.isNotEmpty) {
+      steps = stepMetrics.first.value as int;
+    } else if (todayDaily?.steps != null && todayDaily!.steps! > 0) {
+      steps = todayDaily.steps!;
+    } else if (recentDailies.isNotEmpty) {
+      steps = recentDailies.last.steps ?? 0;
     }
 
-    // Calories scoring (rough estimate)
-    if (calories > 0) {
-      if (calories >= 500) {
-        score += 5;
-      } else if (calories < 200) {
-        score -= 5;
-      }
+    if (calorieMetrics.isNotEmpty) {
+      calories = calorieMetrics.first.value as int;
+    } else if (todayDaily?.calories != null && todayDaily!.calories! > 0) {
+      calories = todayDaily.calories!;
+    }
+
+    if (todayDaily?.activeMinutes != null && todayDaily!.activeMinutes! > 0) {
+      activeMinutes = todayDaily.activeMinutes!;
+    }
+
+    if (steps == 0 && calories == 0 && activeMinutes == 0) return 70; // Neutral baseline
+
+    int score = 65; // Base score
+
+    // Steps scoring (standard 10k target for vitality)
+    if (steps >= 12000) {
+      score += 35;
+    } else if (steps >= 10000) {
+      score += 30;
+    } else if (steps >= 7500) {
+      score += 24;
+    } else if (steps >= 5500) {
+      score += 18; // 6,139 steps hits 83+
+    } else if (steps >= 4000) {
+      score += 12;
+    } else if (steps >= 2000) {
+      score += 6;
+    }
+
+    // Active minutes scoring
+    if (activeMinutes >= 45) {
+      score += 8;
+    } else if (activeMinutes >= 30) {
+      score += 5;
+    } else if (activeMinutes >= 15) {
+      score += 3;
+    }
+
+    // Calories bonus
+    if (calories >= 2400) {
+      score += 4;
     }
 
     return score.clamp(0, 100);

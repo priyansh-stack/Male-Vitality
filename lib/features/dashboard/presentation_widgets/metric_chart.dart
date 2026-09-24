@@ -26,21 +26,27 @@ class MetricChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Icon(Icons.auto_graph_rounded, color: AppTheme.cyberCyan, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'VITALS TELEMETRY PROGRESSION',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.cyberCyan,
-                      letterSpacing: 1.0,
+              const Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_graph_rounded, color: AppTheme.cyberCyan, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'VITALS TELEMETRY PROGRESSION',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.cyberCyan,
+                          letterSpacing: 0.8,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               _buildPeriodSelector(),
             ],
           ),

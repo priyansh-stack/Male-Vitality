@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:life_stage_health_app/core/bloc/auth/auth_event.dart';
 import 'package:life_stage_health_app/core/models/health_score.dart';
+import 'package:life_stage_health_app/core/models/health_daily.dart';
 import 'package:life_stage_health_app/core/models/supporting_health_classes.dart';
 import 'package:life_stage_health_app/features/dashboard/presentation_widgets/abnormal_alerts.dart';
 import 'package:life_stage_health_app/features/dashboard/presentation_widgets/health_score_card.dart';
@@ -361,9 +362,17 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
                     HealthScoreCard(
                       healthScore: state.healthScore,
                       onTap: () {
-                        _showScoreDetails(context, state.healthScore);
+                        _showScoreDetails(
+                          context,
+                          state.healthScore,
+                          state.todayHealthDaily,
+                        );
                       },
                     ),
+                    const SizedBox(height: 18),
+
+                    // 2b. Vitality AI Copilot Quick Launcher
+                    _buildAiCopilotBanner(context, state.healthScore.score),
                     const SizedBox(height: 18),
 
                     // 3. Today's Essential Male Biomarkers (HR, Steps, Sleep, Vascular)
@@ -509,6 +518,15 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
         ],
       ),
       actions: [
+        IconButton(
+          icon: const Icon(
+            Icons.auto_awesome,
+            color: AppTheme.cyberCyan,
+            size: 22,
+          ),
+          tooltip: 'Vitality Health Copilot (Gemini AI)',
+          onPressed: () => context.push('/ai-assistant'),
+        ),
         IconButton(
           icon: const Icon(
             Icons.add_chart_rounded,
@@ -684,6 +702,124 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAiCopilotBanner(BuildContext context, int vitalityScore) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1E2631),
+            AppTheme.darkCard,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.cyberCyan.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.cyberCyan.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => context.push('/ai-assistant'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.cyberCyan, AppTheme.cyberBlue],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.cyberCyan.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Vitality AI Copilot',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cyberCyan.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'GEMINI PRO',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.cyberCyan,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Ask questions grounded in your $vitalityScore/100 score & wearable data',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: AppTheme.cyberCyan,
+                    size: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -956,7 +1092,11 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
 
   // ============= Helper Methods =============
 
-  void _showScoreDetails(BuildContext context, HealthScore score) {
+  void _showScoreDetails(
+    BuildContext context,
+    HealthScore score, [
+    HealthDaily? todayDaily,
+  ]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -990,6 +1130,37 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
                   ),
                 ],
               ),
+              if (todayDaily != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.neonCyan.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.neonCyan.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildMiniTelemetryItem(
+                        icon: Icons.directions_walk_rounded,
+                        label: 'Steps',
+                        value: todayDaily.steps != null ? '${todayDaily.steps}' : '--',
+                      ),
+                      _buildMiniTelemetryItem(
+                        icon: Icons.favorite_rounded,
+                        label: 'Resting HR',
+                        value: todayDaily.restingHeartRate != null ? '${todayDaily.restingHeartRate} bpm' : '--',
+                      ),
+                      _buildMiniTelemetryItem(
+                        icon: Icons.bedtime_rounded,
+                        label: 'Sleep',
+                        value: todayDaily.sleepFormatted ?? '--',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               ...score.categoryScores.entries.map((entry) {
                 return ListTile(
@@ -1035,6 +1206,36 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMiniTelemetryItem({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 18, color: AppTheme.neonCyan),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.textMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 

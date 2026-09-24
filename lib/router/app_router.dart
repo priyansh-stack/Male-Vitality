@@ -44,6 +44,12 @@ import 'package:life_stage_health_app/features/telehealth/presentation/screens/t
 import 'package:life_stage_health_app/features/senior_care/presentation/screens/senior_care_screen.dart';
 import 'package:life_stage_health_app/features/sexual_health/presentation/screens/fertility_tracker_screen.dart';
 import 'package:life_stage_health_app/features/mental_wellness/screens/mental_wellness_screen.dart';
+import 'package:life_stage_health_app/core/bloc/Health_Dashboard/dashboard_bloc.dart';
+import 'package:life_stage_health_app/core/models/health_daily.dart';
+import 'package:life_stage_health_app/core/models/health_score.dart';
+import 'package:life_stage_health_app/features/ai_assistant/cubit/vitality_copilot_cubit.dart';
+import 'package:life_stage_health_app/features/ai_assistant/presentation/screens/vitality_chat_screen.dart';
+import 'package:life_stage_health_app/features/ai_assistant/services/vitality_gemini_service.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> _rootNavigatorKey = 
@@ -500,6 +506,39 @@ class AppRouter {
             userId: userId,
             repository: ServiceLocator.seniorCareRepository,
             initialTabIndex: 2,
+          );
+        },
+      ),
+
+      // ===== VITALITY HEALTH COPILOT (GEMINI AI) ROUTE =====
+      GoRoute(
+        path: '/ai-assistant',
+        name: 'ai-assistant',
+        builder: (context, state) {
+          final dashboardBloc = context.read<DashboardBloc>();
+          final onboardingBloc = context.read<OnboardingBloc>();
+
+          final userProfile = onboardingBloc.state.completedProfile;
+          HealthScore? healthScore;
+          HealthDaily? todayDaily;
+          List<HealthDaily> recentDailies = const [];
+
+          if (dashboardBloc.state is DashboardLoaded) {
+            final loaded = dashboardBloc.state as DashboardLoaded;
+            healthScore = loaded.healthScore;
+            todayDaily = loaded.todayHealthDaily;
+            recentDailies = loaded.recentHealthDailies;
+          }
+
+          return BlocProvider(
+            create: (_) => VitalityCopilotCubit(
+              geminiService: VitalityGeminiService(),
+              userProfile: userProfile,
+              healthScore: healthScore,
+              todayHealthDaily: todayDaily,
+              recentHealthDailies: recentDailies,
+            ),
+            child: const VitalityChatScreen(),
           );
         },
       ),
