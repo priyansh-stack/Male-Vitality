@@ -229,15 +229,19 @@ class _VitalityChatScreenState extends State<VitalityChatScreen> {
             _scrollToBottom();
           }
           if (state.errorMessage != null) {
+            final isKeyErr = state.errorMessage!.toLowerCase().contains('api key');
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.errorMessage!),
                 backgroundColor: AppTheme.neonRed,
-                action: SnackBarAction(
-                  label: 'Set Key',
-                  textColor: Colors.white,
-                  onPressed: _openKeyDialog,
-                ),
+                duration: const Duration(seconds: 4),
+                action: isKeyErr
+                    ? SnackBarAction(
+                        label: 'Set Key',
+                        textColor: Colors.white,
+                        onPressed: _openKeyDialog,
+                      )
+                    : null,
               ),
             );
           }
@@ -389,8 +393,10 @@ class _VitalityChatScreenState extends State<VitalityChatScreen> {
                     Expanded(
                       child: Text(
                         state.hasCustomApiKey
-                            ? 'Gemini Pro Cloud Active'
-                            : 'Grounded Clinical AI Engine Active',
+                            ? 'Custom Gemini Key Active'
+                            : (state.isProModel
+                                ? 'Gemini Pro Active • 10 queries / 2h'
+                                : 'Google AI Active • 10 queries / 2h'),
                         style: const TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 11,
@@ -409,11 +415,10 @@ class _VitalityChatScreenState extends State<VitalityChatScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            state.hasCustomApiKey ? 'Custom Key' : 'Add API Key',
+                            state.hasCustomApiKey ? 'Custom Key' : 'API Key',
                             style: const TextStyle(
                               color: AppTheme.cyberCyan,
                               fontSize: 11,
-                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ],
