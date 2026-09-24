@@ -10,6 +10,7 @@ import '../../cubit/vitality_copilot_cubit.dart';
 import '../../cubit/vitality_copilot_state.dart';
 import '../../services/vitality_gemini_service.dart';
 import '../widgets/vitality_key_dialog.dart';
+import '../widgets/vitality_chat_library_sheet.dart';
 
 class VitalityChatScreen extends StatefulWidget {
   const VitalityChatScreen({super.key});
@@ -103,46 +104,25 @@ class _VitalityChatScreenState extends State<VitalityChatScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => context.pop(),
         ),
-        title: Column(
+        title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Vitality Copilot',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppTheme.cyberCyan.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'AI',
-                    style: TextStyle(
-                      color: AppTheme.cyberCyan,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
             Text(
-              'Gemini Longevity & Telemetry',
+              'AI Copilot',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 0.3,
+              ),
+            ),
+            SizedBox(height: 1),
+            Text(
+              'Gemini Longevity',
               style: TextStyle(
                 fontSize: 10,
-                color: Colors.white.withValues(alpha: 0.6),
+                color: Colors.white70,
                 fontWeight: FontWeight.w400,
               ),
               overflow: TextOverflow.ellipsis,
@@ -182,20 +162,63 @@ class _VitalityChatScreenState extends State<VitalityChatScreen> {
               );
             },
           ),
+          BlocBuilder<VitalityCopilotCubit, VitalityCopilotState>(
+            builder: (context, state) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    padding: const EdgeInsets.all(6),
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.forum_outlined, color: Colors.white70, size: 20),
+                    tooltip: 'Consultation Library',
+                    onPressed: () {
+                      VitalityChatLibrarySheet.show(
+                        context,
+                        context.read<VitalityCopilotCubit>(),
+                        state,
+                      );
+                    },
+                  ),
+                  if (state.sessions.isNotEmpty)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF00FFCC),
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        child: Text(
+                          '${state.sessions.length > 9 ? '9+' : state.sessions.length}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          IconButton(
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.add_comment_outlined, color: Colors.white70, size: 19),
+            tooltip: 'New Chat',
+            onPressed: () => context.read<VitalityCopilotCubit>().startNewChat(),
+          ),
           IconButton(
             padding: const EdgeInsets.all(6),
             constraints: const BoxConstraints(),
             icon: const Icon(Icons.vpn_key_outlined, color: Colors.white70, size: 19),
             tooltip: 'Gemini API Key',
             onPressed: _openKeyDialog,
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            padding: const EdgeInsets.all(6),
-            constraints: const BoxConstraints(),
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white70, size: 19),
-            tooltip: 'Clear Chat',
-            onPressed: () => context.read<VitalityCopilotCubit>().clearConversation(),
           ),
           const SizedBox(width: 8),
         ],

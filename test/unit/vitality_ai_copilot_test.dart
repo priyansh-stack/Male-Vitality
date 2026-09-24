@@ -5,6 +5,7 @@ import 'package:life_stage_health_app/core/models/health_score.dart';
 import 'package:life_stage_health_app/features/ai_assistant/cubit/vitality_copilot_cubit.dart';
 import 'package:life_stage_health_app/features/ai_assistant/cubit/vitality_copilot_state.dart';
 import 'package:life_stage_health_app/features/ai_assistant/services/vitality_gemini_service.dart';
+import 'package:life_stage_health_app/features/ai_assistant/services/vitality_chat_library_repository.dart';
 
 class MockVitalityGeminiService extends VitalityGeminiService {
   final bool _hasKey = true;
@@ -28,9 +29,32 @@ class MockVitalityGeminiService extends VitalityGeminiService {
   }
 }
 
+class MockVitalityChatLibraryRepository extends VitalityChatLibraryRepository {
+  final List<VitalityChatSession> _sessions = [];
+
+  @override
+  Future<List<VitalityChatSession>> fetchSessions() async => List.from(_sessions);
+
+  @override
+  Future<void> saveSession(VitalityChatSession session) async {
+    final idx = _sessions.indexWhere((s) => s.id == session.id);
+    if (idx >= 0) {
+      _sessions[idx] = session;
+    } else {
+      _sessions.insert(0, session);
+    }
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    _sessions.removeWhere((s) => s.id == sessionId);
+  }
+}
+
 void main() {
   group('VitalityCopilotCubit Tests', () {
     late MockVitalityGeminiService mockService;
+    late MockVitalityChatLibraryRepository mockLibrary;
     late VitalityCopilotCubit cubit;
 
     final healthScore = HealthScore(
@@ -54,8 +78,10 @@ void main() {
 
     setUp(() {
       mockService = MockVitalityGeminiService();
+      mockLibrary = MockVitalityChatLibraryRepository();
       cubit = VitalityCopilotCubit(
         geminiService: mockService,
+        libraryRepo: mockLibrary,
         healthScore: healthScore,
         todayHealthDaily: todayDaily,
       );

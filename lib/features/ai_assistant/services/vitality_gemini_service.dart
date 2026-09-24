@@ -26,6 +26,18 @@ class ChatMessage {
     'timestamp': timestamp.toIso8601String(),
     'isEmergencyRedFlag': isEmergencyRedFlag,
   };
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    return ChatMessage(
+      id: json['id'] as String? ?? 'msg_${DateTime.now().millisecondsSinceEpoch}',
+      text: json['text'] as String? ?? '',
+      isUser: json['isUser'] as bool? ?? false,
+      timestamp: json['timestamp'] != null
+          ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
+          : DateTime.now(),
+      isEmergencyRedFlag: json['isEmergencyRedFlag'] as bool? ?? false,
+    );
+  }
 }
 
 class VitalityGeminiService {

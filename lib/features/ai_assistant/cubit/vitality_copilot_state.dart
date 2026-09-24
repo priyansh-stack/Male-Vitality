@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../services/vitality_gemini_service.dart';
+import '../services/vitality_chat_library_repository.dart';
 
 enum VitalityCopilotStatus { initial, loading, success, failure }
 
@@ -11,6 +12,10 @@ class VitalityCopilotState extends Equatable {
   final String? errorMessage;
   final bool hasEmergencyAlert;
   final String? activeEmergencyMessage;
+  final String currentUserName;
+  final String? currentSessionId;
+  final List<VitalityChatSession> sessions;
+  final bool isLoadingLibrary;
 
   const VitalityCopilotState({
     this.status = VitalityCopilotStatus.initial,
@@ -20,6 +25,10 @@ class VitalityCopilotState extends Equatable {
     this.errorMessage,
     this.hasEmergencyAlert = false,
     this.activeEmergencyMessage,
+    this.currentUserName = 'Member',
+    this.currentSessionId,
+    this.sessions = const [],
+    this.isLoadingLibrary = false,
   });
 
   VitalityCopilotState copyWith({
@@ -30,6 +39,10 @@ class VitalityCopilotState extends Equatable {
     String? errorMessage,
     bool? hasEmergencyAlert,
     String? activeEmergencyMessage,
+    String? currentUserName,
+    String? currentSessionId,
+    List<VitalityChatSession>? sessions,
+    bool? isLoadingLibrary,
   }) {
     return VitalityCopilotState(
       status: status ?? this.status,
@@ -39,6 +52,10 @@ class VitalityCopilotState extends Equatable {
       errorMessage: errorMessage,
       hasEmergencyAlert: hasEmergencyAlert ?? this.hasEmergencyAlert,
       activeEmergencyMessage: activeEmergencyMessage ?? this.activeEmergencyMessage,
+      currentUserName: currentUserName ?? this.currentUserName,
+      currentSessionId: currentSessionId ?? this.currentSessionId,
+      sessions: sessions ?? this.sessions,
+      isLoadingLibrary: isLoadingLibrary ?? this.isLoadingLibrary,
     );
   }
 
@@ -51,5 +68,9 @@ class VitalityCopilotState extends Equatable {
         errorMessage,
         hasEmergencyAlert,
         activeEmergencyMessage,
+        currentUserName,
+        currentSessionId,
+        sessions,
+        isLoadingLibrary,
       ];
 }
