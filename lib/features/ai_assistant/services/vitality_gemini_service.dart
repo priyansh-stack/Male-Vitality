@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,6 +36,10 @@ class VitalityGeminiService {
   static const String flashModel = 'gemini-3.6-flash';
   static const String proModel = 'gemini-3.1-pro-preview';
   static const String fallbackModel = 'gemini-3.5-flash-lite';
+
+  /// Phase 2 Production Cloud Function proxy endpoint
+  static const String _cloudFunctionUrl =
+      'https://us-central1-fitbit-health-dash-81a2f.cloudfunctions.net/chatWithHealthAiHttp';
 
   /// Default build-time environment key fallback (pass via --dart-define=GEMINI_API_KEY=...)
   static const String _envKey = String.fromEnvironment('GEMINI_API_KEY');
@@ -102,9 +107,64 @@ class VitalityGeminiService {
     required String systemPrompt,
     bool isPro = false,
   }) async {
+    // 1. Check for manual BYOK developer key override
+    final prefs = await SharedPreferences.getInstance();
+    final customKey = prefs.getString(_keyStorageKey);
+
+    // 2. If no custom key is explicitly entered by user, route through Phase 2 Cloud Function Proxy
+    if (customKey == null || customKey.trim().isEmpty) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          final idToken = await user.getIdToken();
+          if (idToken != null && idToken.isNotEmpty) {
+            final proxyResponse = await http
+                .post(
+                  Uri.parse(_cloudFunctionUrl),
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer $idToken',
+                  },
+                  body: jsonEncode({
+                    'prompt': prompt,
+                    'history': history
+                        .map(
+                          (m) => {
+                            'role': m.isUser ? 'user' : 'model',
+                            'parts': [
+                              {'text': m.text}
+                            ],
+                          },
+                        )
+                        .toList(),
+                    'systemInstruction': systemPrompt,
+                    'isPro': isPro,
+                  }),
+                )
+                .timeout(const Duration(seconds: 25));
+
+            if (proxyResponse.statusCode == 200) {
+              final data = jsonDecode(proxyResponse.body) as Map<String, dynamic>;
+              if (data['reply'] != null) {
+                return (data['reply'] as String).trim();
+              }
+            } else if (proxyResponse.statusCode == 429) {
+              throw Exception(
+                'Daily AI coaching quota reached (30 queries/day). Resets at midnight UTC.',
+              );
+            }
+          }
+        } catch (e) {
+          if (e.toString().contains('quota reached')) rethrow;
+          debugPrint('VitalityGeminiService: Cloud Function proxy error, falling back to direct: $e');
+        }
+      }
+    }
+
+    // 3. Fallback: Direct Gemini REST client
     final apiKey = await getApiKey();
     if (apiKey == null || apiKey.trim().isEmpty) {
-      throw Exception('Gemini API key is not configured. Tap the key icon to provide your API key.');
+      throw Exception('Vitality AI is not available. Please sign in or provide a Gemini API key.');
     }
 
     final modelName = isPro ? proModel : flashModel;
