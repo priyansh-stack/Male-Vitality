@@ -55,6 +55,7 @@ const part2Chapters = [
   { title: 'Clinical Preventive Care & Screening Engine', subtitle: 'Evidence-Based Automated Guidelines from USPSTF Standards' },
   { title: 'Mental Wellness, Stress & Crisis Support', subtitle: 'Breaking the Culture of Silence with Continuous Emotional Anchors' },
   { title: 'Cloud Notifications & FCM Alert Pipeline', subtitle: 'Bi-Directional Telemetry for Critical Biomarker Alerts' },
+  { title: 'Vitality AI Copilot & Conversational Longevity', subtitle: 'Gemini Pro/Flash Dual Engine, Grounded Biometrics & Crisis Triage' },
   { title: 'Complete Architectural & Clinical Decisions', subtitle: 'Exhaustive Rationale Behind Every Technical and Medical Choice' },
   { title: 'Stakeholder FAQ, Glossary & Release Sign-Off', subtitle: 'Plain-English Reference and Official Verification Certificate' },
   { title: 'Appendix A: Patient Intake & Discussion Guide', subtitle: 'Practical Clinical Consultations & Lifestyle Assessment' },

@@ -53,6 +53,13 @@ The core rules engine evaluates user parameters across four distinct clinical br
 - **Clinical Summary Export (PDF)**: Automated generation of structured, multi-page clinical health summaries formatted for physician consultations.
 - **Telehealth Consultation Hub**: Scheduling, provider communication, and preparation checklist for virtual appointments.
 
+### 8. Vitality AI Health Copilot (Google Gemini Dual-Engine)
+- **Dual-Model Foundation Architecture**: REST integration with Google Gemini hosted models, supporting both `gemini-2.5-flash` (ultra-fast interactive habit coaching) and `gemini-2.5-pro` (deep clinical reasoning & longitudinal trend synthesis).
+- **Grounded Biometric Telemetry Injection**: Dynamic system prompt embedding real-time ground truth (Daily Vitality Index, resting heart rate, sleep duration, step counts, active calories, and demographic cohort) to eliminate AI hallucinations.
+- **Clinical Emergency & Crisis Triage**: Deterministic safety interceptors detecting acute self-harm (immediate 988 Crisis Lifeline banner), chest pain/myocardial infarction (911 Emergency call prompt), and urological emergencies (priapism >4h, testicular torsion).
+- **User-Isolated Private Chat Library**: Per-user conversation history persisted in Cloud Firestore (`users/{uid}/ai_chat_sessions`) with seamless local encrypted cache fallback (`flutter_secure_storage`), zero hardcoded user info, and interactive session management.
+- **In-App API Key Configuration**: Native dialog (`VitalityKeyDialog`) validating user-provided Google AI Studio Gemini API keys with encrypted device storage.
+
 ---
 
 ## Technical Architecture
@@ -68,6 +75,7 @@ lib/
 │   ├── services/          # Infrastructure services (Firebase, Firestore, Database, Audio, PDF)
 │   └── theme/             # Material Design 3 theme system (Light and Dark themes)
 ├── features/
+│   ├── ai_assistant/      # Gemini AI Copilot (Cubit, Gemini REST service, Chat Library, UI screens)
 │   ├── auth/              # Authentication and identity management
 │   ├── dashboard/         # Health score, abnormal alerts, metric grids, trend charts
 │   ├── fitness_nutrition/ # Workout logging, macronutrient tracking, and repositories
